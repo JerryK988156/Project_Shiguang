@@ -1,0 +1,47 @@
+server:
+  port: 8080
+  servlet:
+    encoding:
+      charset: utf-8
+      enabled: true
+      force: true
+
+spring:
+  application:
+    name: shiguang-backend
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${OCEANBASE_URL:jdbc:mysql://127.0.0.1:2881/shiguang_plan?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai}
+    username: ${OCEANBASE_USERNAME:root}
+    password: ${OCEANBASE_PASSWORD:}
+    hikari:
+      initialization-fail-timeout: -1
+      minimum-idle: 2
+      maximum-pool-size: 10
+  mvc:
+    format:
+      date: yyyy-MM-dd
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 20MB
+
+mybatis-plus:
+  mapper-locations: classpath:/mapper/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: auto
+
+logging:
+  level:
+    com.example.shiguang.mapper: debug
+
+app:
+  database:
+    bootstrap-url: ${OCEANBASE_BOOTSTRAP_URL:jdbc:mysql://127.0.0.1:2881/?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai}
+    target-database: ${OCEANBASE_DATABASE:shiguang_plan}
+    verify-on-startup: ${DB_VERIFY_ON_STARTUP:true}
+    auto-init-on-startup: ${DB_AUTO_INIT_ON_STARTUP:true}

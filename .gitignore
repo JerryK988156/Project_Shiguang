@@ -1,0 +1,14 @@
+node_modules/
+dist/
+target/
+*.jar
+*.class
+.idea/
+*.iml
+.vscode/
+.DS_Store
+*.log
+cookies.txt
+.env
+.env.local
+logs/
