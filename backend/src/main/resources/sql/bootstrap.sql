@@ -17,7 +17,7 @@ CREATE TABLE `user` (
   `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_username` (`username`)
-) COMMENT='用户表';
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户表';
 
 CREATE TABLE `goal` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -33,7 +33,7 @@ CREATE TABLE `goal` (
   PRIMARY KEY (`id`),
   KEY `idx_user_id` (`user_id`),
   KEY `idx_status` (`status`)
-) COMMENT='目标表';
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='目标表';
 
 CREATE TABLE `checkin_record` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -49,45 +49,46 @@ CREATE TABLE `checkin_record` (
   UNIQUE KEY `uk_user_goal_date` (`user_id`, `goal_id`, `checkin_date`),
   KEY `idx_goal_id` (`goal_id`),
   KEY `idx_checkin_date` (`checkin_date`)
-) COMMENT='打卡记录表';
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='打卡记录表';
 
 INSERT INTO `user` (`username`, `password`, `nickname`, `role`) VALUES
+('Jerry', '953cdbd5747772fd609cfebf0a4384f9', 'Jerry', 'admin'),
 ('admin', 'e10adc3949ba59abbe56e057f20f883e', '管理员', 'admin'),
 ('zhangsan', 'e10adc3949ba59abbe56e057f20f883e', '张三', 'user'),
 ('lisi', 'e10adc3949ba59abbe56e057f20f883e', '李四', 'user'),
 ('wangwu', 'e10adc3949ba59abbe56e057f20f883e', '王五', 'user');
 
 INSERT INTO `goal` (`user_id`, `title`, `description`, `start_date`, `end_date`, `target_days`, `status`) VALUES
-(2, '每天背 50 个单词', '使用不背单词 App', '2026-07-01', '2026-08-31', 60, '进行中'),
-(2, '刷 LeetCode 每日一题', '坚持每天一道算法题', '2026-07-10', '2026-09-10', 60, '进行中'),
-(2, '阅读《代码整洁之道》', '每天读一章并做笔记', '2026-07-05', '2026-07-25', 20, '已完成'),
-(3, '每天运动 30 分钟', '跑步或跳绳', '2026-07-01', '2026-08-01', 30, '进行中'),
-(3, '学习 Spring Boot', '跟着教程完成一个小项目', '2026-07-01', '2026-08-15', 45, '进行中'),
-(4, '每天写日记', '记录每日心得与反思', '2026-07-01', '2026-12-31', 180, '进行中');
+(3, '每天背 50 个单词', '使用不背单词 App', '2026-07-01', '2026-08-31', 60, '进行中'),
+(3, '刷 LeetCode 每日一题', '坚持每天一道算法题', '2026-07-10', '2026-09-10', 60, '进行中'),
+(3, '阅读《代码整洁之道》', '每天读一章并做笔记', '2026-07-05', '2026-07-25', 20, '已完成'),
+(4, '每天运动 30 分钟', '跑步或跳绳', '2026-07-01', '2026-08-01', 30, '进行中'),
+(4, '学习 Spring Boot', '跟着教程完成一个小项目', '2026-07-01', '2026-08-15', 45, '进行中'),
+(5, '每天写日记', '记录每日心得与反思', '2026-07-01', '2026-12-31', 180, '进行中');
 
 INSERT INTO `checkin_record` (`user_id`, `goal_id`, `checkin_date`, `study_duration`, `content`) VALUES
-(2, 1, '2026-07-10', 30, '背了 List 1-3'),
-(2, 1, '2026-07-11', 25, '背了 List 4-6'),
-(2, 1, '2026-07-12', 35, '背了 List 7-9'),
-(2, 1, '2026-07-13', 20, '复习 List 1-9'),
-(2, 1, '2026-07-14', 30, '背了 List 10-12'),
-(2, 1, '2026-07-15', 40, '背了 List 13-15'),
-(2, 1, '2026-07-16', 25, '复习本周全部单词');
+(3, 1, '2026-07-10', 30, '背了 List 1-3'),
+(3, 1, '2026-07-11', 25, '背了 List 4-6'),
+(3, 1, '2026-07-12', 35, '背了 List 7-9'),
+(3, 1, '2026-07-13', 20, '复习 List 1-9'),
+(3, 1, '2026-07-14', 30, '背了 List 10-12'),
+(3, 1, '2026-07-15', 40, '背了 List 13-15'),
+(3, 1, '2026-07-16', 25, '复习本周全部单词');
 
 INSERT INTO `checkin_record` (`user_id`, `goal_id`, `checkin_date`, `study_duration`, `content`) VALUES
-(2, 2, '2026-07-10', 45, '两数之和、三数之和'),
-(2, 2, '2026-07-11', 60, '最长回文子串'),
-(2, 2, '2026-07-13', 30, '合并两个有序链表'),
-(2, 2, '2026-07-15', 50, '二叉树的层序遍历'),
-(2, 2, '2026-07-16', 40, '动态规划入门');
+(3, 2, '2026-07-10', 45, '两数之和、三数之和'),
+(3, 2, '2026-07-11', 60, '最长回文子串'),
+(3, 2, '2026-07-13', 30, '合并两个有序链表'),
+(3, 2, '2026-07-15', 50, '二叉树的层序遍历'),
+(3, 2, '2026-07-16', 40, '动态规划入门');
 
 INSERT INTO `checkin_record` (`user_id`, `goal_id`, `checkin_date`, `study_duration`, `content`) VALUES
-(3, 4, '2026-07-13', 30, '跑步 3 公里'),
-(3, 4, '2026-07-14', 30, '跳绳 1000 个'),
-(3, 4, '2026-07-15', 35, '跑步 4 公里'),
-(3, 4, '2026-07-16', 30, '跳绳 1200 个');
+(4, 4, '2026-07-13', 30, '跑步 3 公里'),
+(4, 4, '2026-07-14', 30, '跳绳 1000 个'),
+(4, 4, '2026-07-15', 35, '跑步 4 公里'),
+(4, 4, '2026-07-16', 30, '跳绳 1200 个');
 
 INSERT INTO `checkin_record` (`user_id`, `goal_id`, `checkin_date`, `study_duration`, `remark`) VALUES
-(4, 6, '2026-07-14', 15, '今天学了 Vue3 组件通信'),
-(4, 6, '2026-07-15', 10, '整理了 Element Plus 常用组件'),
-(4, 6, '2026-07-16', 20, '复习了 Vue Router 路由守卫');
+(5, 6, '2026-07-14', 15, '今天学了 Vue3 组件通信'),
+(5, 6, '2026-07-15', 10, '整理了 Element Plus 常用组件'),
+(5, 6, '2026-07-16', 20, '复习了 Vue Router 路由守卫');

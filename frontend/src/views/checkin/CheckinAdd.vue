@@ -23,24 +23,15 @@ const loadGoals = async () => {
 }
 
 const loadTodayStatus = async () => {
-  if (!form.goalId) {
-    todayStatus.value = null
-    return
-  }
-  todayStatus.value = await getTodayCheckinApi({
-    goalId: form.goalId,
-    checkinDate: form.checkinDate
-  })
+  if (!form.goalId) { todayStatus.value = null; return }
+  todayStatus.value = await getTodayCheckinApi({ goalId: form.goalId })
 }
 
 const handleSubmit = async () => {
-  if (!form.goalId) {
-    ElMessage.warning('请选择目标')
-    return
-  }
+  if (!form.goalId) { ElMessage.warning('请选择目标'); return }
   loading.value = true
   try {
-    await addCheckinApi(form)
+    await addCheckinApi({ ...form, checkinDate: new Date().toISOString().slice(0, 10) })
     ElMessage.success('打卡成功')
     await loadTodayStatus()
     form.content = ''
@@ -50,30 +41,24 @@ const handleSubmit = async () => {
   }
 }
 
-watch(() => [form.goalId, form.checkinDate], loadTodayStatus)
+watch(() => form.goalId, loadTodayStatus)
 
 onMounted(async () => {
   await loadGoals()
-  if (goalList.value.length > 0) {
-    form.goalId = goalList.value[0].id
-  }
+  if (goalList.value.length > 0) form.goalId = goalList.value[0].id
 })
 </script>
 
 <template>
   <div class="page-container">
     <el-card v-loading="loading">
-      <template #header>
-        <span>今日打卡</span>
-      </template>
+      <template #header><span>今日打卡</span></template>
 
       <el-alert
         v-if="todayStatus"
         :title="todayStatus.hasChecked ? '当前目标今天已打卡' : '当前目标今天还未打卡'"
         :type="todayStatus.hasChecked ? 'success' : 'info'"
-        show-icon
-        :closable="false"
-        class="page-alert"
+        show-icon :closable="false" class="page-alert"
       />
 
       <el-form label-width="100px">
@@ -83,7 +68,7 @@ onMounted(async () => {
           </el-select>
         </el-form-item>
         <el-form-item label="打卡日期">
-          <el-date-picker v-model="form.checkinDate" type="date" value-format="YYYY-MM-DD" />
+          <el-input :model-value="form.checkinDate" disabled style="width: 200px" />
         </el-form-item>
         <el-form-item label="学习时长">
           <el-input-number v-model="form.studyDuration" :min="1" :step="10" />

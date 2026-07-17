@@ -10,20 +10,23 @@ const router = useRouter()
 const userStore = useUserStore()
 
 const menus = computed(() => {
-  const baseMenus = [
+  if (userStore.isAdmin()) {
+    return [
+      { index: '/admin/dashboard', title: '首页看板', icon: 'House' },
+      { index: '/admin/stat', title: '管理概览', icon: 'Histogram' },
+      { index: '/user/profile', title: '个人中心', icon: 'User' }
+    ]
+  }
+
+  return [
     { index: '/dashboard', title: '首页看板', icon: 'House' },
     { index: '/goal/list', title: '目标列表', icon: 'Tickets' },
     { index: '/goal/edit', title: '新建目标', icon: 'EditPen' },
     { index: '/checkin/add', title: '今日打卡', icon: 'Calendar' },
     { index: '/checkin/list', title: '打卡记录', icon: 'List' },
-    { index: '/stat/personal', title: '个人统计', icon: 'DataAnalysis' }
+    { index: '/stat/personal', title: '个人统计', icon: 'DataAnalysis' },
+    { index: '/user/profile', title: '个人中心', icon: 'User' }
   ]
-
-  if (userStore.isAdmin()) {
-    baseMenus.push({ index: '/admin/stat', title: '管理概览', icon: 'Histogram' })
-  }
-
-  return baseMenus
 })
 
 const currentTitle = computed(() => {
@@ -59,6 +62,9 @@ const handleLogout = async () => {
       <el-header class="header-panel">
         <div class="header-title">{{ currentTitle }}</div>
         <div class="header-user">
+          <el-avatar :size="32" :src="userStore.userInfo.avatar" class="header-avatar">
+            {{ (userStore.userInfo.nickname || userStore.userInfo.username || '?').charAt(0) }}
+          </el-avatar>
           <el-tag size="small" :type="userStore.isAdmin() ? 'danger' : 'primary'">
             {{ userStore.isAdmin() ? '管理员' : '普通用户' }}
           </el-tag>

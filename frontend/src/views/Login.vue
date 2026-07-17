@@ -28,7 +28,7 @@ const handleLogin = async () => {
     const userInfo = await getCurrentUserApi()
     userStore.setUserInfo(userInfo)
     ElMessage.success('登录成功')
-    router.push('/dashboard')
+    router.push(userStore.isAdmin() ? '/admin/dashboard' : '/dashboard')
   } finally {
     loading.value = false
   }

@@ -20,5 +20,5 @@ export const getTodayCheckinApi = (params) => request({
 
 export const deleteCheckinApi = (id) => request({
   url: `/checkin/delete/${id}`,
-  method: 'delete'
+  method: 'post'
 })

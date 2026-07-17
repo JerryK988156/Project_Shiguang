@@ -3,17 +3,17 @@ package com.example.shiguang.common.service;
 import com.example.shiguang.mapper.UserMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.io.support.EncodedResource;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.init.ScriptUtils;
 import org.springframework.stereotype.Service;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
-import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -91,10 +91,8 @@ public class DatabaseVerificationService {
                     result.put("initialized", false);
                     result.put("message", "检测到 user 表和基础数据已存在，跳过初始化");
                 } else {
-                    ScriptUtils.executeSqlScript(
-                            connection,
-                            new EncodedResource(new ClassPathResource("sql/bootstrap.sql"), StandardCharsets.UTF_8)
-                    );
+                    connection.createStatement().execute("SET NAMES utf8mb4");
+                    executeSqlScript(connection, "sql/bootstrap.sql");
                     result.put("initialized", true);
                     result.put("message", force ? "已强制重建数据库结构并导入测试数据" : "已初始化数据库结构并导入测试数据");
                 }
@@ -110,9 +108,40 @@ public class DatabaseVerificationService {
         return result;
     }
 
+    /**
+     * 自定义 SQL 执行器，替代 ScriptUtils 以避免 charset 丢失问题。
+     * 逐条读取 UTF-8 编码的 SQL 文件，以分号分隔后在同一个连接上顺序执行。
+     */
+    private void executeSqlScript(Connection connection, String classpath) throws Exception {
+        ClassPathResource resource = new ClassPathResource(classpath);
+        StringBuilder sb = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String trimmed = line.trim();
+                if (trimmed.isEmpty() || trimmed.startsWith("--")) {
+                    continue;
+                }
+                sb.append(line).append('\n');
+            }
+        }
+
+        String[] statements = sb.toString().split(";");
+        try (Statement stmt = connection.createStatement()) {
+            for (String sql : statements) {
+                String trimmed = sql.trim();
+                if (!trimmed.isEmpty()) {
+                    stmt.execute(trimmed);
+                }
+            }
+        }
+    }
+
     private void createDatabaseIfNeeded() throws Exception {
         validateDatabaseName(targetDatabase);
-        String sql = "CREATE DATABASE IF NOT EXISTS `" + targetDatabase + "` DEFAULT CHARACTER SET utf8mb4 DEFAULT COLLATE utf8mb4_general_ci";
+        String sql = "CREATE DATABASE IF NOT EXISTS `" + targetDatabase
+                + "` DEFAULT CHARACTER SET utf8mb4 DEFAULT COLLATE utf8mb4_unicode_ci";
 
         try (Connection connection = DriverManager.getConnection(bootstrapUrl, username, password);
              Statement statement = connection.createStatement()) {

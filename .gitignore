@@ -12,3 +12,4 @@ cookies.txt
 .env
 .env.local
 logs/
+uploads/

@@ -18,6 +18,7 @@ spring:
       initialization-fail-timeout: -1
       minimum-idle: 2
       maximum-pool-size: 10
+      connection-init-sql: SET NAMES utf8mb4
   mvc:
     format:
       date: yyyy-MM-dd
@@ -40,6 +41,8 @@ logging:
     com.example.shiguang.mapper: debug
 
 app:
+  upload:
+    dir: uploads
   database:
     bootstrap-url: ${OCEANBASE_BOOTSTRAP_URL:jdbc:mysql://127.0.0.1:2881/?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai}
     target-database: ${OCEANBASE_DATABASE:shiguang_plan}

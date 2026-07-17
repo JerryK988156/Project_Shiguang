@@ -39,6 +39,10 @@ public class JsonResponse<T> implements Serializable {
         return response;
     }
 
+    public static <T> JsonResponse<T> error(String message) {
+        return failure(400, message);
+    }
+
     public boolean isStatus() {
         return status;
     }

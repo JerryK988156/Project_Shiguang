@@ -1,6 +1,7 @@
 package com.example.shiguang.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.example.shiguang.common.BusinessException;
 import com.example.shiguang.common.utls.SessionUtils;
 import com.example.shiguang.mapper.CheckinRecordMapper;
 import com.example.shiguang.mapper.GoalMapper;
@@ -42,13 +43,17 @@ public class AdminService {
                 .map(CheckinRecord::getUserId)
                 .distinct()
                 .count());
+        result.put("isSuperAdmin", SessionUtils.isSuperAdmin());
         return result;
     }
 
     public List<Map<String, Object>> userList() {
         SessionUtils.requireAdmin();
+        Long currentUserId = SessionUtils.requireUserId();
+        boolean isSuperAdmin = SessionUtils.isSuperAdmin();
+
         List<User> users = userMapper.selectList(new LambdaQueryWrapper<User>()
-                .orderByDesc(User::getCreateTime, User::getId));
+                .orderByDesc(User::getCreateTime));
         List<Map<String, Object>> result = new ArrayList<>();
         for (User user : users) {
             Map<String, Object> item = new LinkedHashMap<>(authService.toSafeUser(user));
@@ -56,8 +61,44 @@ public class AdminService {
                     .eq(Goal::getUserId, user.getId())));
             item.put("checkinCount", checkinRecordMapper.selectCount(new LambdaQueryWrapper<CheckinRecord>()
                     .eq(CheckinRecord::getUserId, user.getId())));
+
+            // 判断当前管理员能否修改此用户状态
+            boolean isSelf = user.getId().equals(currentUserId);
+            boolean canModify = !isSelf && (isSuperAdmin || !"admin".equals(user.getRole()));
+            item.put("canModify", canModify);
+            item.put("isSelf", isSelf);
             result.add(item);
         }
         return result;
+    }
+
+    public Map<String, Object> toggleUserStatus(Long id, Integer status) {
+        SessionUtils.requireAdmin();
+        if (id == null) {
+            throw new BusinessException("用户 id 不能为空");
+        }
+        if (status == null || (status != 0 && status != 1)) {
+            throw new BusinessException("状态值只能为 0（禁用）或 1（正常）");
+        }
+
+        User targetUser = userMapper.selectById(id);
+        if (targetUser == null) {
+            throw new BusinessException("用户不存在");
+        }
+
+        // 不能修改自己的状态
+        Long currentUserId = SessionUtils.requireUserId();
+        if (currentUserId.equals(id)) {
+            throw new BusinessException("不能修改自己的账号状态");
+        }
+
+        // 普通管理员不能修改其他管理员的权限
+        if ("admin".equals(targetUser.getRole()) && !SessionUtils.isSuperAdmin()) {
+            throw new BusinessException("仅超级管理员可以修改其他管理员的权限");
+        }
+
+        targetUser.setStatus(status);
+        userMapper.updateById(targetUser);
+        return authService.toSafeUser(userMapper.selectById(id));
     }
 }

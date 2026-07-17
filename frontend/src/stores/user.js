@@ -7,7 +7,9 @@ export const useUserStore = defineStore('user', () => {
     id: '',
     username: '',
     nickname: '',
-    role: 'user'
+    role: 'user',
+    avatar: '',
+    profile: ''
   })
 
   const setToken = (value) => {
@@ -26,15 +28,24 @@ export const useUserStore = defineStore('user', () => {
 
   const setUserInfo = (value) => {
     userInfo.value = {
-      id: value?.id || '',
-      username: value?.username || '',
-      nickname: value?.nickname || '',
-      role: value?.role || 'user'
+      id: value?.id || userInfo.value.id,
+      username: value?.username || userInfo.value.username,
+      nickname: value?.nickname || userInfo.value.nickname,
+      role: value?.role || userInfo.value.role || 'user',
+      avatar: value?.avatar !== undefined ? value.avatar : userInfo.value.avatar,
+      profile: value?.profile !== undefined ? value.profile : userInfo.value.profile
     }
     localStorage.setItem('shiguang-user', JSON.stringify(userInfo.value))
   }
 
+  const updateAvatar = (url) => {
+    userInfo.value.avatar = url
+    localStorage.setItem('shiguang-user', JSON.stringify(userInfo.value))
+  }
+
   const isAdmin = () => userInfo.value.role === 'admin'
+
+  const isSuperAdmin = () => userInfo.value.role === 'admin' && Number(userInfo.value.id) === 1
 
   const isLoggedIn = () => Boolean(token.value)
 
@@ -46,7 +57,9 @@ export const useUserStore = defineStore('user', () => {
       id: '',
       username: '',
       nickname: '',
-      role: 'user'
+      role: 'user',
+      avatar: '',
+      profile: ''
     }
   }
 
@@ -56,7 +69,9 @@ export const useUserStore = defineStore('user', () => {
       id: '',
       username: '',
       nickname: '',
-      role: 'user'
+      role: 'user',
+      avatar: '',
+      profile: ''
     }
     localStorage.removeItem('shiguang-user')
   }
@@ -66,7 +81,9 @@ export const useUserStore = defineStore('user', () => {
     userInfo,
     setToken,
     setUserInfo,
+    updateAvatar,
     isAdmin,
+    isSuperAdmin,
     isLoggedIn,
     hasUserInfo,
     hydrateSession,

@@ -14,6 +14,8 @@ import CheckinAdd from '@/views/checkin/CheckinAdd.vue'
 import CheckinList from '@/views/checkin/CheckinList.vue'
 import PersonalStat from '@/views/stat/PersonalStat.vue'
 import AdminStat from '@/views/admin/AdminStat.vue'
+import AdminDashboard from '@/views/admin/AdminDashboard.vue'
+import UserProfile from '@/views/user/UserProfile.vue'
 
 const routes = [
   {
@@ -71,10 +73,22 @@ const routes = [
         meta: { title: '个人统计' }
       },
       {
+        path: '/admin/dashboard',
+        name: 'admin-dashboard',
+        component: AdminDashboard,
+        meta: { title: '首页看板', requiresAdmin: true }
+      },
+      {
         path: '/admin/stat',
         name: 'admin-stat',
         component: AdminStat,
         meta: { title: '管理概览', requiresAdmin: true }
+      },
+      {
+        path: '/user/profile',
+        name: 'user-profile',
+        component: UserProfile,
+        meta: { title: '个人中心' }
       }
     ]
   }
@@ -94,7 +108,8 @@ router.beforeEach(async (to) => {
   }
 
   if (to.path === '/login' && token) {
-    return '/dashboard'
+    const userStore = useUserStore(pinia)
+    return userStore.isAdmin() ? '/admin/dashboard' : '/dashboard'
   }
 
   if (to.meta.requiresAuth && token && !userStore.hasUserInfo()) {

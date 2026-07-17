@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.shiguang.common.BusinessException;
 import com.example.shiguang.common.utls.SessionUtils;
 import com.example.shiguang.mapper.CheckinRecordMapper;
+import com.example.shiguang.mapper.GoalMapper;
 import com.example.shiguang.model.domain.CheckinRecord;
 import com.example.shiguang.model.domain.Goal;
 import com.example.shiguang.model.dto.CheckinDTO;
@@ -18,10 +19,12 @@ import java.util.stream.Collectors;
 @Service
 public class CheckinService {
     private final CheckinRecordMapper checkinRecordMapper;
+    private final GoalMapper goalMapper;
     private final GoalService goalService;
 
-    public CheckinService(CheckinRecordMapper checkinRecordMapper, GoalService goalService) {
+    public CheckinService(CheckinRecordMapper checkinRecordMapper, GoalMapper goalMapper, GoalService goalService) {
         this.checkinRecordMapper = checkinRecordMapper;
+        this.goalMapper = goalMapper;
         this.goalService = goalService;
     }
 
@@ -47,7 +50,9 @@ public class CheckinService {
         record.setContent(dto.getContent());
         record.setRemark(dto.getRemark());
         checkinRecordMapper.insert(record);
-        return checkinRecordMapper.selectById(record.getId());
+        CheckinRecord saved = checkinRecordMapper.selectById(record.getId());
+        saved.setGoalTitle(goal.getTitle());
+        return saved;
     }
 
     public List<CheckinRecord> list(Long goalId) {
@@ -58,7 +63,16 @@ public class CheckinService {
             wrapper.eq(CheckinRecord::getGoalId, goalId);
         }
         wrapper.orderByDesc(CheckinRecord::getCheckinDate, CheckinRecord::getId);
-        return checkinRecordMapper.selectList(wrapper);
+        List<CheckinRecord> records = checkinRecordMapper.selectList(wrapper);
+
+        // 填充目标名称
+        for (CheckinRecord r : records) {
+            Goal goal = goalMapper.selectById(r.getGoalId());
+            if (goal != null) {
+                r.setGoalTitle(goal.getTitle());
+            }
+        }
+        return records;
     }
 
     public Map<String, Object> today(Long goalId) {

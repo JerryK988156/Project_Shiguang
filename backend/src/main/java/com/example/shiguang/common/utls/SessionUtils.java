@@ -10,6 +10,7 @@ public final class SessionUtils {
     public static final String LOGIN_USER_ID = "loginUserId";
     public static final String LOGIN_USER_ROLE = "loginUserRole";
     public static final String LOGIN_USERNAME = "loginUsername";
+    public static final Long SUPER_ADMIN_ID = 1L;
 
     private SessionUtils() {
     }
@@ -59,5 +60,13 @@ public final class SessionUtils {
         if (!"admin".equals(currentUserRole())) {
             throw new BusinessException("无权限访问");
         }
+    }
+
+    /**
+     * 超级管理员：id 为 1 且角色为 admin 的用户
+     */
+    public static boolean isSuperAdmin() {
+        Long userId = currentUserId();
+        return userId != null && SUPER_ADMIN_ID.equals(userId) && "admin".equals(currentUserRole());
     }
 }

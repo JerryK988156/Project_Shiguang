@@ -32,4 +32,19 @@ public class StatController {
     public JsonResponse<List<Map<String, Object>>> goalProgress() {
         return JsonResponse.success(statService.goalProgress());
     }
+
+    @GetMapping("/trend30")
+    public JsonResponse<List<Map<String, Object>>> trend30() {
+        return JsonResponse.success(statService.trend30());
+    }
+
+    @GetMapping("/goalTimeDistribution")
+    public JsonResponse<List<Map<String, Object>>> goalTimeDistribution() {
+        return JsonResponse.success(statService.goalTimeDistribution());
+    }
+
+    @GetMapping("/checkinCalendar")
+    public JsonResponse<Map<String, Object>> checkinCalendar() {
+        return JsonResponse.success(statService.checkinCalendar());
+    }
 }

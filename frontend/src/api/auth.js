@@ -18,12 +18,23 @@ export const getCurrentUserApi = () => request({
 
 export const updateProfileApi = (data) => request({
   url: '/user/profile',
-  method: 'put',
+  method: 'post',
   data
 })
 
 export const updatePasswordApi = (data) => request({
   url: '/user/password',
-  method: 'put',
+  method: 'post',
   data
 })
+
+export const uploadAvatarApi = (file) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request({
+    url: '/user/avatar',
+    method: 'post',
+    data: formData,
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+}

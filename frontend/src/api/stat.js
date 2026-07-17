@@ -10,7 +10,22 @@ export const getStatTrend7Api = () => request({
   method: 'get'
 })
 
+export const getStatTrend30Api = () => request({
+  url: '/stat/trend30',
+  method: 'get'
+})
+
 export const getGoalProgressApi = () => request({
   url: '/stat/goalProgress',
+  method: 'get'
+})
+
+export const getGoalTimeDistributionApi = () => request({
+  url: '/stat/goalTimeDistribution',
+  method: 'get'
+})
+
+export const getCheckinCalendarApi = () => request({
+  url: '/stat/checkinCalendar',
   method: 'get'
 })

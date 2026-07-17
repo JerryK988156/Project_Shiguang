@@ -1,5 +1,6 @@
 package com.example.shiguang.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.shiguang.common.BusinessException;
 import com.example.shiguang.common.utls.PasswordUtils;
 import com.example.shiguang.mapper.UserMapper;
@@ -23,9 +24,24 @@ public class UserService {
 
     public Map<String, Object> updateProfile(UpdateProfileDTO dto) {
         User user = authService.requireCurrentUserEntity();
-        user.setNickname(dto == null ? null : dto.getNickname());
-        user.setAvatar(dto == null ? null : dto.getAvatar());
-        user.setProfile(dto == null ? null : dto.getProfile());
+
+        if (dto != null && StringUtils.hasText(dto.getUsername())) {
+            String newUsername = dto.getUsername().trim();
+            if (!newUsername.equals(user.getUsername())) {
+                // username 唯一性校验
+                User existing = userMapper.selectOne(new LambdaQueryWrapper<User>()
+                        .eq(User::getUsername, newUsername)
+                        .last("limit 1"));
+                if (existing != null && !existing.getId().equals(user.getId())) {
+                    throw new BusinessException("账号 " + newUsername + " 已被占用，请更换");
+                }
+                user.setUsername(newUsername);
+            }
+        }
+
+        user.setNickname(dto != null ? dto.getNickname() : user.getNickname());
+        user.setAvatar(dto != null ? dto.getAvatar() : user.getAvatar());
+        user.setProfile(dto != null ? dto.getProfile() : user.getProfile());
         userMapper.updateById(user);
         return authService.toSafeUser(userMapper.selectById(user.getId()));
     }
@@ -45,5 +61,12 @@ public class UserService {
 
         user.setPassword(PasswordUtils.md5(dto.getNewPassword()));
         userMapper.updateById(user);
+    }
+
+    public Map<String, Object> updateAvatar(String avatarUrl) {
+        User user = authService.requireCurrentUserEntity();
+        user.setAvatar(avatarUrl);
+        userMapper.updateById(user);
+        return authService.toSafeUser(userMapper.selectById(user.getId()));
     }
 }
