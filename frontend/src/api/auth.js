@@ -6,6 +6,12 @@ export const loginApi = (data) => request({
   data
 })
 
+export const registerApi = (data) => request({
+  url: '/auth/register',
+  method: 'post',
+  data
+})
+
 export const logoutApi = () => request({
   url: '/auth/logout',
   method: 'post'
@@ -18,13 +24,13 @@ export const getCurrentUserApi = () => request({
 
 export const updateProfileApi = (data) => request({
   url: '/user/profile',
-  method: 'post',
+  method: 'put',
   data
 })
 
 export const updatePasswordApi = (data) => request({
   url: '/user/password',
-  method: 'post',
+  method: 'put',
   data
 })
 

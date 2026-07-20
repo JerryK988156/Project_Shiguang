@@ -40,6 +40,12 @@ logging:
   level:
     com.example.shiguang.mapper: debug
 
+ai:
+  llm:
+    base-url: ${AI_LLM_API_BASE_URL:https://api.deepseek.com}
+    api-key: ${AI_LLM_API_KEY:sk-faa34c9448ff411a885c1e6cb5f0e3b2}
+    model: ${AI_LLM_MODEL:deepseek-v4-flash}
+
 app:
   upload:
     dir: uploads

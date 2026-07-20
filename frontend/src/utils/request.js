@@ -7,7 +7,13 @@ const request = axios.create({
   withCredentials: true
 })
 
-request.interceptors.request.use((config) => config)
+request.interceptors.request.use((config) => {
+  const token = localStorage.getItem('shiguang-token')
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
 
 request.interceptors.response.use(
   (response) => {

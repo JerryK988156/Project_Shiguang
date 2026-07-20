@@ -4,19 +4,24 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.shiguang.common.BusinessException;
 import com.example.shiguang.common.utls.SessionUtils;
 import com.example.shiguang.mapper.GoalMapper;
+import com.example.shiguang.mapper.GoalTagMapper;
 import com.example.shiguang.model.domain.Goal;
+import com.example.shiguang.model.domain.GoalTag;
 import com.example.shiguang.model.dto.GoalDTO;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.util.Collections;
 import java.util.List;
 
 @Service
 public class GoalService {
     private final GoalMapper goalMapper;
+    private final GoalTagMapper goalTagMapper;
 
-    public GoalService(GoalMapper goalMapper) {
+    public GoalService(GoalMapper goalMapper, GoalTagMapper goalTagMapper) {
         this.goalMapper = goalMapper;
+        this.goalTagMapper = goalTagMapper;
     }
 
     public Goal add(GoalDTO dto) {
@@ -30,7 +35,19 @@ public class GoalService {
         goal.setTargetDays(dto.getTargetDays());
         goal.setStatus(StringUtils.hasText(dto.getStatus()) ? dto.getStatus() : "进行中");
         goalMapper.insert(goal);
-        return goalMapper.selectById(goal.getId());
+
+        if (dto.getTags() != null && !dto.getTags().isEmpty()) {
+            for (String tagName : dto.getTags()) {
+                if (StringUtils.hasText(tagName)) {
+                    GoalTag goalTag = new GoalTag();
+                    goalTag.setGoalId(goal.getId());
+                    goalTag.setTagName(tagName.trim());
+                    goalTagMapper.insert(goalTag);
+                }
+            }
+        }
+
+        return fillTags(goalMapper.selectById(goal.getId()));
     }
 
     public Goal update(GoalDTO dto) {
@@ -48,7 +65,21 @@ public class GoalService {
             goal.setStatus(dto.getStatus());
         }
         goalMapper.updateById(goal);
-        return goalMapper.selectById(goal.getId());
+
+        if (dto.getTags() != null) {
+            goalTagMapper.delete(new LambdaQueryWrapper<GoalTag>()
+                    .eq(GoalTag::getGoalId, goal.getId()));
+            for (String tagName : dto.getTags()) {
+                if (StringUtils.hasText(tagName)) {
+                    GoalTag goalTag = new GoalTag();
+                    goalTag.setGoalId(goal.getId());
+                    goalTag.setTagName(tagName.trim());
+                    goalTagMapper.insert(goalTag);
+                }
+            }
+        }
+
+        return fillTags(goalMapper.selectById(goal.getId()));
     }
 
     public void delete(Long id) {
@@ -57,13 +88,21 @@ public class GoalService {
     }
 
     public Goal detail(Long id) {
-        return requireOwnedGoal(id);
+        return fillTags(requireOwnedGoal(id));
     }
 
-    public List<Goal> list() {
-        return goalMapper.selectList(new LambdaQueryWrapper<Goal>()
+    public List<Goal> list(String status) {
+        LambdaQueryWrapper<Goal> wrapper = new LambdaQueryWrapper<Goal>()
                 .eq(Goal::getUserId, SessionUtils.requireUserId())
-                .orderByDesc(Goal::getCreateTime, Goal::getId));
+                .orderByDesc(Goal::getCreateTime);
+        if (StringUtils.hasText(status)) {
+            wrapper.eq(Goal::getStatus, status);
+        }
+        List<Goal> goals = goalMapper.selectList(wrapper);
+        for (Goal goal : goals) {
+            fillTags(goal);
+        }
+        return goals;
     }
 
     public Goal updateStatus(Long id, String status) {
@@ -73,7 +112,7 @@ public class GoalService {
         Goal goal = requireOwnedGoal(id);
         goal.setStatus(status);
         goalMapper.updateById(goal);
-        return goalMapper.selectById(goal.getId());
+        return fillTags(goalMapper.selectById(goal.getId()));
     }
 
     public Goal requireOwnedGoal(Long id) {
@@ -84,6 +123,19 @@ public class GoalService {
         if (goal == null || !goal.getUserId().equals(SessionUtils.requireUserId())) {
             throw new BusinessException("目标不存在");
         }
+        return goal;
+    }
+
+    private Goal fillTags(Goal goal) {
+        if (goal == null) {
+            return null;
+        }
+        List<GoalTag> tagList = goalTagMapper.selectList(new LambdaQueryWrapper<GoalTag>()
+                .eq(GoalTag::getGoalId, goal.getId()));
+        List<String> tags = tagList.stream()
+                .map(GoalTag::getTagName)
+                .toList();
+        goal.setTags(tags);
         return goal;
     }
 

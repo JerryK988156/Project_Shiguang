@@ -21,14 +21,16 @@ public class CheckinService {
     private final CheckinRecordMapper checkinRecordMapper;
     private final GoalMapper goalMapper;
     private final GoalService goalService;
+    private final AchievementService achievementService;
 
-    public CheckinService(CheckinRecordMapper checkinRecordMapper, GoalMapper goalMapper, GoalService goalService) {
+    public CheckinService(CheckinRecordMapper checkinRecordMapper, GoalMapper goalMapper, GoalService goalService, AchievementService achievementService) {
         this.checkinRecordMapper = checkinRecordMapper;
         this.goalMapper = goalMapper;
         this.goalService = goalService;
+        this.achievementService = achievementService;
     }
 
-    public CheckinRecord add(CheckinDTO dto) {
+    public Map<String, Object> add(CheckinDTO dto) {
         if (dto == null || dto.getGoalId() == null) {
             throw new BusinessException("目标不能为空");
         }
@@ -52,7 +54,11 @@ public class CheckinService {
         checkinRecordMapper.insert(record);
         CheckinRecord saved = checkinRecordMapper.selectById(record.getId());
         saved.setGoalTitle(goal.getTitle());
-        return saved;
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("record", saved);
+        result.put("achievement", achievementService.checkAndAward(goal.getId()));
+        return result;
     }
 
     public List<CheckinRecord> list(Long goalId) {

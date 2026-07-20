@@ -43,8 +43,18 @@ public class StatController {
         return JsonResponse.success(statService.goalTimeDistribution());
     }
 
+    @GetMapping("/tagStats")
+    public JsonResponse<List<Map<String, Object>>> tagStats() {
+        return JsonResponse.success(statService.tagStats());
+    }
+
     @GetMapping("/checkinCalendar")
     public JsonResponse<Map<String, Object>> checkinCalendar() {
         return JsonResponse.success(statService.checkinCalendar());
+    }
+
+    @GetMapping("/weeklyReport")
+    public JsonResponse<Map<String, Object>> weeklyReport() {
+        return JsonResponse.success(statService.weeklyReport());
     }
 }

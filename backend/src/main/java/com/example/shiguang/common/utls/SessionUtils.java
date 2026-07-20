@@ -2,38 +2,35 @@ package com.example.shiguang.common.utls;
 
 import com.example.shiguang.common.BusinessException;
 import com.example.shiguang.model.domain.User;
-import jakarta.servlet.http.HttpSession;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 public final class SessionUtils {
-    public static final String LOGIN_USER_ID = "loginUserId";
-    public static final String LOGIN_USER_ROLE = "loginUserRole";
+    public static final String LOGIN_USER_ID = "userId";
+    public static final String LOGIN_USER_ROLE = "userRole";
     public static final String LOGIN_USERNAME = "loginUsername";
     public static final Long SUPER_ADMIN_ID = 1L;
 
     private SessionUtils() {
     }
 
-    public static HttpSession session() {
+    private static HttpServletRequest request() {
         ServletRequestAttributes attributes =
                 (ServletRequestAttributes) RequestContextHolder.currentRequestAttributes();
-        return attributes.getRequest().getSession(true);
+        return attributes.getRequest();
     }
 
     public static void login(User user) {
-        HttpSession session = session();
-        session.setAttribute(LOGIN_USER_ID, user.getId());
-        session.setAttribute(LOGIN_USER_ROLE, user.getRole());
-        session.setAttribute(LOGIN_USERNAME, user.getUsername());
+        // JWT token 代替 session，此方法保留但不再需要操作 session
     }
 
     public static void logout() {
-        session().invalidate();
+        // JWT 无状态，客户端删除 token 即可，无需服务端操作
     }
 
     public static Long currentUserId() {
-        Object value = session().getAttribute(LOGIN_USER_ID);
+        Object value = request().getAttribute(LOGIN_USER_ID);
         if (value == null) {
             return null;
         }
@@ -52,7 +49,7 @@ public final class SessionUtils {
     }
 
     public static String currentUserRole() {
-        Object value = session().getAttribute(LOGIN_USER_ROLE);
+        Object value = request().getAttribute(LOGIN_USER_ROLE);
         return value == null ? null : value.toString();
     }
 

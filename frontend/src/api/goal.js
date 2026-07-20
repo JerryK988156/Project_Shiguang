@@ -19,17 +19,17 @@ export const addGoalApi = (data) => request({
 
 export const updateGoalApi = (data) => request({
   url: '/goal/update',
-  method: 'post',
+  method: 'put',
   data
 })
 
 export const deleteGoalApi = (id) => request({
   url: `/goal/delete/${id}`,
-  method: 'post'
+  method: 'delete'
 })
 
 export const updateGoalStatusApi = (id, status) => request({
   url: `/goal/status/${id}`,
-  method: 'post',
+  method: 'put',
   params: { status }
 })

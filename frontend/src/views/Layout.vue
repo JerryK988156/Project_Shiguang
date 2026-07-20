@@ -5,6 +5,7 @@ import { ElMessage } from 'element-plus'
 
 import { useUserStore } from '@/stores/user'
 import { logoutApi } from '@/api/auth'
+import FloatingChat from '@/components/FloatingChat.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -58,7 +59,7 @@ const handleLogout = async () => {
       </el-menu>
     </el-aside>
 
-    <el-container>
+    <el-container class="right-container">
       <el-header class="header-panel">
         <div class="header-title">{{ currentTitle }}</div>
         <div class="header-user">
@@ -77,17 +78,20 @@ const handleLogout = async () => {
         <router-view />
       </el-main>
     </el-container>
+    <FloatingChat />
   </el-container>
 </template>
 
 <style scoped lang="scss">
 .layout-container {
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .aside-panel {
   color: #fff;
   background: #111827;
+  overflow-y: auto;
 }
 
 .logo {
@@ -106,6 +110,7 @@ const handleLogout = async () => {
   justify-content: space-between;
   background: #fff;
   border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
 }
 
 .header-title {
@@ -121,5 +126,15 @@ const handleLogout = async () => {
 
 .main-panel {
   background: #f5f7fb;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.right-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
 }
 </style>

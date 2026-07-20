@@ -2,6 +2,7 @@ package com.example.shiguang.web.controller;
 
 import com.example.shiguang.common.JsonResponse;
 import com.example.shiguang.model.dto.LoginDTO;
+import com.example.shiguang.model.dto.RegisterDTO;
 import com.example.shiguang.service.AuthService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,6 +24,11 @@ public class AuthController {
     @PostMapping("/login")
     public JsonResponse<Map<String, Object>> login(@RequestBody LoginDTO loginDTO) {
         return JsonResponse.success(authService.login(loginDTO), "登录成功");
+    }
+
+    @PostMapping("/register")
+    public JsonResponse<Map<String, Object>> register(@RequestBody RegisterDTO registerDTO) {
+        return JsonResponse.success(authService.register(registerDTO), "注册成功");
     }
 
     @PostMapping("/logout")

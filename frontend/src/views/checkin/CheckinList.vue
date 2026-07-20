@@ -40,6 +40,44 @@ const handleDelete = async (row) => {
   loadCheckins()
 }
 
+const csvEscape = (val) => {
+  if (val == null) return ''
+  const str = String(val)
+  if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+    return `"${str.replace(/"/g, '""')}"`
+  }
+  return str
+}
+
+const handleExport = () => {
+  const headers = ['日期', '目标名称', '学习时长(分钟)', '学习内容', '备注']
+  const rows = checkinList.value.map((item) => [
+    item.checkinDate,
+    item.goalTitle,
+    item.studyDuration,
+    item.content,
+    item.remark
+  ])
+  const csvContent = [
+    headers.map(csvEscape).join(','),
+    ...rows.map((row) => row.map(csvEscape).join(','))
+  ].join('\n')
+
+  const BOM = '\uFEFF'
+  const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  const today = new Date().toISOString().slice(0, 10)
+  link.download = `checkin_records_${today}.csv`
+  link.style.display = 'none'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+  ElMessage.success('导出成功')
+}
+
 onMounted(async () => {
   await loadGoalList()
   await loadCheckins()
@@ -56,6 +94,7 @@ onMounted(async () => {
           <el-option v-for="item in goalList" :key="item.id" :label="item.title" :value="item.id" />
         </el-select>
         <el-button type="primary" @click="loadCheckins">查询</el-button>
+        <el-button type="success" @click="handleExport">导出 CSV</el-button>
       </div>
 
       <el-table v-loading="loading" :data="checkinList" stripe @row-click="handleRowClick" style="cursor: pointer">

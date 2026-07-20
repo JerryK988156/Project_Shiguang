@@ -8,6 +8,8 @@ import { getGoalListApi } from '@/api/goal'
 const loading = ref(false)
 const goalList = ref([])
 const todayStatus = ref(null)
+const achievementVisible = ref(false)
+const achievementInfo = ref({ goalTitle: '', milestoneDays: 0, badgeName: '' })
 
 const form = reactive({
   goalId: '',
@@ -31,11 +33,21 @@ const handleSubmit = async () => {
   if (!form.goalId) { ElMessage.warning('请选择目标'); return }
   loading.value = true
   try {
-    await addCheckinApi({ ...form, checkinDate: new Date().toISOString().slice(0, 10) })
+    const result = await addCheckinApi({ ...form, checkinDate: new Date().toISOString().slice(0, 10) })
     ElMessage.success('打卡成功')
     await loadTodayStatus()
     form.content = ''
     form.remark = ''
+
+    const ach = result?.achievement
+    if (ach && ach.earned) {
+      achievementInfo.value = {
+        goalTitle: ach.goalTitle || '',
+        milestoneDays: ach.milestoneDays || 0,
+        badgeName: ach.badgeName || ''
+      }
+      achievementVisible.value = true
+    }
   } finally {
     loading.value = false
   }
@@ -85,4 +97,16 @@ onMounted(async () => {
       </el-form>
     </el-card>
   </div>
+
+  <el-dialog v-model="achievementVisible" title="🎉 成就达成" width="420px" center>
+    <div style="text-align: center; padding: 20px">
+      <div style="font-size: 48px; margin-bottom: 8px">🏆</div>
+      <div style="font-size: 24px; font-weight: 700; margin: 16px 0 8px">
+        {{ achievementInfo.goalTitle }}
+      </div>
+      <div style="font-size: 18px; color: #6b7280">
+        累计打卡 {{ achievementInfo.milestoneDays }} 天，获得 {{ achievementInfo.badgeName }}
+      </div>
+    </div>
+  </el-dialog>
 </template>

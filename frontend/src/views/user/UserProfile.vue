@@ -1,9 +1,10 @@
 <script setup>
-import { reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 
 import { useUserStore } from '@/stores/user'
 import { updateProfileApi, updatePasswordApi, uploadAvatarApi } from '@/api/auth'
+import { getAchievementListApi } from '@/api/achievement'
 
 const userStore = useUserStore()
 
@@ -15,6 +16,7 @@ const profileForm = reactive({
 
 const avatarUrl = ref(userStore.userInfo.avatar || '')
 const uploading = ref(false)
+const achievements = ref([])
 
 const passwordForm = reactive({
   oldPassword: '',
@@ -24,6 +26,17 @@ const passwordForm = reactive({
 
 const profileLoading = ref(false)
 const passwordLoading = ref(false)
+
+const loadAchievements = async () => {
+  try {
+    const data = await getAchievementListApi()
+    achievements.value = Array.isArray(data) ? data : []
+  } catch {
+    achievements.value = []
+  }
+}
+
+onMounted(loadAchievements)
 
 const handleAvatarChange = async (event) => {
   const file = event.target.files[0]
@@ -99,9 +112,7 @@ const handleUpdatePassword = async () => {
 <template>
   <div class="page-container profile-page">
     <el-card>
-      <template #header>
-        <span>个人资料</span>
-      </template>
+      <template #header><span>个人资料</span></template>
       <el-form label-width="80px" label-position="left">
         <el-form-item label="头像">
           <div class="avatar-section">
@@ -133,9 +144,20 @@ const handleUpdatePassword = async () => {
     </el-card>
 
     <el-card>
-      <template #header>
-        <span>修改密码</span>
-      </template>
+      <template #header><span>我的成就</span></template>
+      <div v-if="achievements.length > 0" class="achievement-grid">
+        <div v-for="ach in achievements" :key="ach.id" class="achievement-card">
+          <div class="ach-emoji">🏆</div>
+          <div class="ach-title">{{ ach.goalTitle }}</div>
+          <div class="ach-days">{{ ach.badgeName }} · {{ ach.milestoneDays }} 天</div>
+          <div class="ach-date">{{ ach.achievedDate }}</div>
+        </div>
+      </div>
+      <div v-else class="empty-achievement">坚持打卡，解锁你的第一个成就！</div>
+    </el-card>
+
+    <el-card>
+      <template #header><span>修改密码</span></template>
       <el-form label-width="80px" label-position="left">
         <el-form-item label="旧密码">
           <el-input v-model="passwordForm.oldPassword" type="password" show-password placeholder="请输入旧密码" />
@@ -181,14 +203,8 @@ const handleUpdatePassword = async () => {
   background: #e5e7eb;
   transition: opacity 0.2s;
 
-  &:hover .avatar-overlay {
-    opacity: 1;
-  }
-
-  &.uploading {
-    opacity: 0.6;
-    pointer-events: none;
-  }
+  &:hover .avatar-overlay { opacity: 1; }
+  &.uploading { opacity: 0.6; pointer-events: none; }
 }
 
 .avatar-img {
@@ -225,8 +241,31 @@ const handleUpdatePassword = async () => {
   transition: opacity 0.2s;
 }
 
-.avatar-tip {
+.avatar-tip { color: #9ca3af; font-size: 13px; }
+
+.achievement-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.achievement-card {
+  text-align: center;
+  padding: 12px 8px;
+  border-radius: 10px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+}
+
+.ach-emoji { font-size: 32px; }
+.ach-title { font-size: 12px; color: #374151; margin: 6px 0 4px; }
+.ach-days { font-size: 12px; font-weight: 600; color: #111827; }
+.ach-date { font-size: 11px; color: #9ca3af; margin-top: 4px; }
+
+.empty-achievement {
+  text-align: center;
+  padding: 32px 0;
   color: #9ca3af;
-  font-size: 13px;
+  font-size: 14px;
 }
 </style>

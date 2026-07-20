@@ -2,7 +2,7 @@
 import { onMounted, onUnmounted, ref, watch, nextTick } from 'vue'
 import * as echarts from 'echarts'
 
-import { getGoalProgressApi, getStatOverviewApi, getStatTrend7Api, getStatTrend30Api, getGoalTimeDistributionApi, getCheckinCalendarApi } from '@/api/stat'
+import { getGoalProgressApi, getStatOverviewApi, getStatTrend7Api, getStatTrend30Api, getGoalTimeDistributionApi, getCheckinCalendarApi, getWeeklyReportApi } from '@/api/stat'
 
 const loading = ref(false)
 const overview = ref({})
@@ -10,7 +10,8 @@ const trend7List = ref([])
 const trend30List = ref([])
 const goalProgressList = ref([])
 const timeDistList = ref([])
-const calendarData = ref({ data: [], maxCount: 1 })
+const calendarData = ref({ data: [], maxCount: 1, maxPossible: 1 })
+const weeklyReport = ref({})
 
 const trend7ChartRef = ref(null)
 const trend30ChartRef = ref(null)
@@ -26,13 +27,14 @@ let calendarInstance = null
 const loadStatData = async () => {
   loading.value = true
   try {
-    const [overviewData, trend7Data, trend30Data, progressData, timeDistData, calData] = await Promise.all([
+    const [overviewData, trend7Data, trend30Data, progressData, timeDistData, calData, weeklyData] = await Promise.all([
       getStatOverviewApi(),
       getStatTrend7Api(),
       getStatTrend30Api(),
       getGoalProgressApi(),
       getGoalTimeDistributionApi(),
-      getCheckinCalendarApi()
+      getCheckinCalendarApi(),
+      getWeeklyReportApi()
     ])
     overview.value = overviewData || {}
     trend7List.value = Array.isArray(trend7Data) ? trend7Data : []
@@ -40,6 +42,7 @@ const loadStatData = async () => {
     goalProgressList.value = Array.isArray(progressData) ? progressData : []
     timeDistList.value = Array.isArray(timeDistData) ? timeDistData : []
     calendarData.value = calData || { data: [], maxCount: 1 }
+    weeklyReport.value = weeklyData || {}
   } finally {
     loading.value = false
   }
@@ -49,7 +52,7 @@ const renderCalendar = () => {
   if (!calendarRef.value) return
   if (!calendarInstance) calendarInstance = echarts.init(calendarRef.value)
   const data = Array.isArray(calendarData.value.data) ? calendarData.value.data : []
-  const max = Math.max(1, calendarData.value.maxCount || 1)
+  const max = Math.max(1, calendarData.value.maxPossible || 1)
   const year = new Date().getFullYear()
   calendarInstance.setOption({
     tooltip: { formatter: (params) => `${params.data[0]}<br/>打卡 ${params.data[1]} 次` },
@@ -168,6 +171,54 @@ onUnmounted(() => {
     </el-card>
 
     <el-card>
+      <template #header><span>本周 vs 上周</span></template>
+      <div class="weekly-compare">
+        <div class="weekly-col">
+          <div class="weekly-label">打卡天数</div>
+          <div class="weekly-row">
+            <span class="weekly-num">{{ (weeklyReport.thisWeek || {}).totalDays ?? '-' }}</span>
+            <span class="weekly-sep">/</span>
+            <span class="weekly-num weekly-num-last">{{ (weeklyReport.lastWeek || {}).totalDays ?? '-' }}</span>
+          </div>
+          <div class="weekly-change" v-if="(weeklyReport.changes || {}).daysPct != null">
+            <span :class="(weeklyReport.changes || {}).daysPct >= 0 ? 'change-up' : 'change-down'">
+              {{ (weeklyReport.changes || {}).daysPct >= 0 ? '↑' : '↓' }}{{ Math.abs((weeklyReport.changes || {}).daysPct) }}%
+            </span>
+          </div>
+          <div class="weekly-change weekly-change-na" v-else>-</div>
+        </div>
+        <div class="weekly-col">
+          <div class="weekly-label">学习时长</div>
+          <div class="weekly-row">
+            <span class="weekly-num">{{ (weeklyReport.thisWeek || {}).totalMinutes ?? '-' }}</span>
+            <span class="weekly-sep">/</span>
+            <span class="weekly-num weekly-num-last">{{ (weeklyReport.lastWeek || {}).totalMinutes ?? '-' }}</span>
+          </div>
+          <div class="weekly-change" v-if="(weeklyReport.changes || {}).minutesPct != null">
+            <span :class="(weeklyReport.changes || {}).minutesPct >= 0 ? 'change-up' : 'change-down'">
+              {{ (weeklyReport.changes || {}).minutesPct >= 0 ? '↑' : '↓' }}{{ Math.abs((weeklyReport.changes || {}).minutesPct) }}%
+            </span>
+          </div>
+          <div class="weekly-change weekly-change-na" v-else>-</div>
+        </div>
+        <div class="weekly-col">
+          <div class="weekly-label">活跃目标数</div>
+          <div class="weekly-row">
+            <span class="weekly-num">{{ (weeklyReport.thisWeek || {}).checkedInGoals ?? '-' }}</span>
+            <span class="weekly-sep">/</span>
+            <span class="weekly-num weekly-num-last">{{ (weeklyReport.lastWeek || {}).checkedInGoals ?? '-' }}</span>
+          </div>
+          <div class="weekly-change" v-if="(weeklyReport.changes || {}).goalsPct != null">
+            <span :class="(weeklyReport.changes || {}).goalsPct >= 0 ? 'change-up' : 'change-down'">
+              {{ (weeklyReport.changes || {}).goalsPct >= 0 ? '↑' : '↓' }}{{ Math.abs((weeklyReport.changes || {}).goalsPct) }}%
+            </span>
+          </div>
+          <div class="weekly-change weekly-change-na" v-else>-</div>
+        </div>
+      </div>
+    </el-card>
+
+    <el-card>
       <template #header><span>近 7 天趋势</span></template>
       <div ref="trend7ChartRef" class="chart-container"></div>
     </el-card>
@@ -196,4 +247,15 @@ onUnmounted(() => {
 .info-value { font-size: 24px; font-weight: 700; color: #111827; }
 .chart-container { width: 100%; height: 360px; }
 .chart-calendar { height: 320px; }
+.weekly-compare { display: flex; justify-content: space-around; padding: 20px 0; }
+.weekly-col { text-align: center; flex: 1; }
+.weekly-label { font-size: 14px; color: #6b7280; margin-bottom: 12px; }
+.weekly-row { display: flex; justify-content: center; align-items: baseline; gap: 6px; margin-bottom: 8px; }
+.weekly-num { font-size: 32px; font-weight: 700; color: #111827; }
+.weekly-num-last { font-size: 22px; color: #9ca3af; font-weight: 500; }
+.weekly-sep { font-size: 22px; color: #d1d5db; }
+.weekly-change { font-size: 14px; }
+.weekly-change-na { color: #9ca3af; }
+.change-up { color: #10b981; font-weight: 600; }
+.change-down { color: #ef4444; font-weight: 600; }
 </style>

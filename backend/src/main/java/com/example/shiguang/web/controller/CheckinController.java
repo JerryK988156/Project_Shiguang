@@ -4,6 +4,7 @@ import com.example.shiguang.common.JsonResponse;
 import com.example.shiguang.model.domain.CheckinRecord;
 import com.example.shiguang.model.dto.CheckinDTO;
 import com.example.shiguang.service.CheckinService;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -25,7 +26,7 @@ public class CheckinController {
     }
 
     @PostMapping("/add")
-    public JsonResponse<CheckinRecord> add(@RequestBody CheckinDTO dto) {
+    public JsonResponse<Map<String, Object>> add(@RequestBody CheckinDTO dto) {
         return JsonResponse.success(checkinService.add(dto), "打卡成功");
     }
 
@@ -39,7 +40,7 @@ public class CheckinController {
         return JsonResponse.success(checkinService.today(goalId));
     }
 
-    @PostMapping("/delete/{id}")
+    @DeleteMapping("/delete/{id}")
     public JsonResponse<Void> delete(@PathVariable Long id) {
         checkinService.delete(id);
         return JsonResponse.success(null, "删除打卡成功");

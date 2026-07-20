@@ -29,3 +29,13 @@ export const getCheckinCalendarApi = () => request({
   url: '/stat/checkinCalendar',
   method: 'get'
 })
+
+export const getTagStatsApi = () => request({
+  url: '/stat/tagStats',
+  method: 'get'
+})
+
+export const getWeeklyReportApi = () => request({
+  url: '/stat/weeklyReport',
+  method: 'get'
+})
