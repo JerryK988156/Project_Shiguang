@@ -2,6 +2,7 @@ package com.example.shiguang.service;
 
 import com.example.shiguang.common.utls.SessionUtils;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -11,6 +12,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@Tag("integration")
 @SpringBootTest(properties = {
     "spring.cache.type=simple",
     "DB_VERIFY_ON_STARTUP=false",
