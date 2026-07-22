@@ -11,10 +11,18 @@ jobs:
     name: Backend Maven Test
     runs-on: ubuntu-latest
     services:
-      redis:
-        image: redis:7-alpine
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: shiguang_plan
         ports:
-          - 6379:6379
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK 21
@@ -26,12 +34,16 @@ jobs:
       - name: Test with Maven
         run: cd backend && ./mvnw test -B
         env:
-          OCEANBASE_URL: jdbc:mysql://127.0.0.1:2881/shiguang_plan?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai
+          OCEANBASE_URL: jdbc:mysql://127.0.0.1:3306/shiguang_plan?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai
+          OCEANBASE_USERNAME: root
+          OCEANBASE_PASSWORD: root
+          OCEANBASE_BOOTSTRAP_URL: jdbc:mysql://127.0.0.1:3306/?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai
+          OCEANBASE_DATABASE: shiguang_plan
           REDIS_HOST: localhost
           REDIS_PORT: 6379
           CACHE_TYPE: simple
-          DB_VERIFY_ON_STARTUP: false
-          DB_AUTO_INIT_ON_STARTUP: false
+          DB_VERIFY_ON_STARTUP: true
+          DB_AUTO_INIT_ON_STARTUP: true
 
   frontend-build:
     name: Frontend Vite Build
