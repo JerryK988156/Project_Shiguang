@@ -19,11 +19,11 @@ jobs:
         ports:
           - 3306:3306
         options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -proot"
-          --health-interval=10s
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -proot --silent"
+          --health-interval=5s
           --health-timeout=5s
-          --health-retries=10
-          --health-start-period=30s
+          --health-retries=20
+          --health-start-period=20s
 
     steps:
       - uses: actions/checkout@v4
@@ -35,22 +35,31 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Grant mvnw execute permission
-        run: chmod +x backend/mvnw
-
-      - name: Wait for MySQL to be ready
+      - name: Ensure mvnw has LF endings and is executable
         run: |
-          for i in {1..30}; do
-            if mysqladmin ping -h 127.0.0.1 -u root -proot --silent; then
-              echo "MySQL is ready"
-              break
+          sed -i 's/\r$//' backend/mvnw
+          chmod +x backend/mvnw
+
+      - name: Install MySQL client
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq mysql-client
+
+      - name: Wait for MySQL
+        run: |
+          echo "Waiting for MySQL to accept connections..."
+          for i in $(seq 1 30); do
+            if mysql -h 127.0.0.1 -u root -proot -e "SELECT 1" shiguang_plan >/dev/null 2>&1; then
+              echo "MySQL is ready (took ~$((i * 2))s)"
+              mysql -h 127.0.0.1 -u root -proot -e "SHOW DATABASES;"
+              exit 0
             fi
-            echo "Waiting for MySQL... ($i/30)"
+            printf "."
             sleep 2
           done
+          echo "ERROR: MySQL did not become ready in time"
+          exit 1
 
-      - name: Test with Maven
-        run: cd backend && ./mvnw test -B
+      - name: Run Tests
+        run: cd backend && ./mvnw test -B --fail-at-end
         env:
           OCEANBASE_URL: jdbc:mysql://127.0.0.1:3306/shiguang_plan?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai
           OCEANBASE_USERNAME: root
