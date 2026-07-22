@@ -1,47 +1,199 @@
+// ===== 拾光计划 全局色彩体系 =====
 :root {
-  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
-  color: #1f2937;
-  background: #f5f7fb;
+  // 主色系 - 现代蓝紫调
+  --color-primary: #6366f1;
+  --color-primary-light: #818cf8;
+  --color-primary-dark: #4f46e5;
+  --color-primary-bg: #eef2ff;
+  
+  // 功能色
+  --color-success: #10b981;
+  --color-success-light: #d1fae5;
+  --color-warning: #f59e0b;
+  --color-warning-light: #fef3c7;
+  --color-danger: #ef4444;
+  --color-danger-light: #fee2e2;
+  --color-info: #909399;
+  
+  // 背景色
+  --bg-page: #f1f5f9;
+  --bg-card: #ffffff;
+  --bg-sidebar-start: #0f172a;
+  --bg-sidebar-end: #1e293b;
+  
+  // 文字色
+  --text-primary: #1e293b;
+  --text-regular: #334155;
+  --text-secondary: #64748b;
+  --text-placeholder: #94a3b8;
+  --text-inverse: #ffffff;
+  
+  // 边框
+  --border-color: #e2e8f0;
+  --border-light: #f1f5f9;
+  
+  // 阴影
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+  
+  // 圆角
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  
+  // 间距
+  --spacing-xs: 8px;
+  --spacing-sm: 12px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  
+  // 导航栏
+  --sidebar-width: 220px;
+  --header-height: 60px;
+  
+  // 过渡
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.3s ease;
+  
+  // 响应式断点
+  --breakpoint-sm: 576px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 992px;
+  --breakpoint-xl: 1200px;
 }
 
+// ===== 全局基础样式 =====
 * {
+  margin: 0;
+  padding: 0;
   box-sizing: border-box;
 }
 
-html,
-body,
-#app {
-  margin: 0;
-  min-height: 100%;
+html, body {
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  font-size: 14px;
+  color: var(--text-primary);
+  background: var(--bg-page);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-body {
-  min-width: 1200px;
+// ===== 全局滚动条美化 =====
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+  
+  &:hover {
+    background: #94a3b8;
+  }
+}
+
+// ===== 全局 El-Card 样式 =====
+.el-card {
+  border-radius: var(--radius-lg) !important;
+  border: 1px solid var(--border-color) !important;
+  box-shadow: var(--shadow-sm) !important;
+  transition: box-shadow var(--transition-normal);
+  
+  &:hover {
+    box-shadow: var(--shadow-md) !important;
+  }
+  
+  .el-card__header {
+    border-bottom: 1px solid var(--border-light) !important;
+    padding: var(--spacing-md) var(--spacing-lg) !important;
+  }
+  
+  .el-card__body {
+    padding: var(--spacing-lg) !important;
+  }
+}
+
+// ===== 全局按钮样式 =====
+.el-button--primary {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light)) !important;
+  border: none !important;
+  border-radius: var(--radius-sm) !important;
+  font-weight: 500 !important;
+  transition: all var(--transition-normal) !important;
+  
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4) !important;
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+.el-button {
+  border-radius: var(--radius-sm) !important;
+  font-weight: 500 !important;
+}
+
+// ===== 全局标签样式 =====
+.el-tag {
+  border-radius: 20px !important;
+  font-weight: 500 !important;
+  border: none !important;
+}
+
+// ===== 全局输入框样式 =====
+.el-input__wrapper {
+  border-radius: var(--radius-sm) !important;
+  box-shadow: 0 0 0 1px var(--border-color) !important;
+  transition: all var(--transition-normal) !important;
+  
+  &:hover {
+    box-shadow: 0 0 0 1px var(--color-primary-light) !important;
+  }
+}
+
+.el-input.is-focus .el-input__wrapper {
+  box-shadow: 0 0 0 2px var(--color-primary-bg), 0 0 0 1px var(--color-primary) !important;
+}
+
+// ===== 全局选择器样式 =====
+.el-select .el-input__wrapper {
+  border-radius: var(--radius-sm) !important;
+}
+
+// ===== 页面通用容器 =====
 .page-container {
-  display: grid;
-  gap: 20px;
+  padding: var(--spacing-lg);
+  max-width: 1400px;
 }
 
-.page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
+// ===== 移动端响应式全局样式 =====
+@media (max-width: 768px) {
+  .el-table {
+    font-size: 13px;
+  }
 
-.toolbar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 20px;
-}
+  .el-dialog {
+    width: 95% !important;
+  }
 
-.page-alert {
-  margin-bottom: 20px;
+  .el-drawer {
+    width: 90% !important;
+  }
+
+  .el-card {
+    border-radius: 12px;
+  }
 }

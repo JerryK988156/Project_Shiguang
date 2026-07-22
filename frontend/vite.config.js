@@ -21,5 +21,24 @@ export default defineConfig({
         changeOrigin: true
       }
     }
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('echarts')) {
+              return 'echarts'
+            }
+            if (id.includes('element-plus')) {
+              return 'element-plus'
+            }
+            if (id.includes('vue') || id.includes('pinia') || id.includes('vue-router')) {
+              return 'vue-vendor'
+            }
+          }
+        }
+      }
+    }
   }
 })

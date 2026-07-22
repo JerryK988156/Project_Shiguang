@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, onUnmounted, ref, watch, nextTick } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch, nextTick } from 'vue'
 import * as echarts from 'echarts'
 
 import { getGoalProgressApi, getStatOverviewApi, getStatTrend7Api, getStatTrend30Api, getGoalTimeDistributionApi, getCheckinCalendarApi, getWeeklyReportApi } from '@/api/stat'
@@ -12,6 +12,8 @@ const goalProgressList = ref([])
 const timeDistList = ref([])
 const calendarData = ref({ data: [], maxCount: 1, maxPossible: 1 })
 const weeklyReport = ref({})
+
+const chartHeight = computed(() => window.innerWidth < 768 ? '200px' : '350px')
 
 const trend7ChartRef = ref(null)
 const trend30ChartRef = ref(null)
@@ -167,7 +169,7 @@ onUnmounted(() => {
 
     <el-card>
       <template #header><span>打卡日历</span></template>
-      <div ref="calendarRef" class="chart-container chart-calendar"></div>
+      <div ref="calendarRef" class="chart-container chart-calendar" :style="{ height: chartHeight }"></div>
     </el-card>
 
     <el-card>
@@ -220,7 +222,7 @@ onUnmounted(() => {
 
     <el-card>
       <template #header><span>近 7 天趋势</span></template>
-      <div ref="trend7ChartRef" class="chart-container"></div>
+      <div ref="trend7ChartRef" class="chart-container" :style="{ height: chartHeight }"></div>
     </el-card>
 
     <el-card>
@@ -235,12 +237,16 @@ onUnmounted(() => {
 
     <el-card>
       <template #header><span>各目标学习时长占比</span></template>
-      <div ref="timePieRef" class="chart-container"></div>
+      <div ref="timePieRef" class="chart-container" :style="{ height: chartHeight }"></div>
     </el-card>
   </div>
 </template>
 
 <style scoped lang="scss">
+.page-container {
+  padding: 24px;
+  max-width: 1400px;
+}
 .stat-page { display: grid; gap: 20px; }
 .info-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
 .info-label { margin-bottom: 12px; color: #6b7280; }
@@ -258,4 +264,19 @@ onUnmounted(() => {
 .weekly-change-na { color: #9ca3af; }
 .change-up { color: #10b981; font-weight: 600; }
 .change-down { color: #ef4444; font-weight: 600; }
+
+@media (max-width: 768px) {
+  .info-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .weekly-compare {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .chart-container {
+    height: auto !important;
+  }
+}
 </style>

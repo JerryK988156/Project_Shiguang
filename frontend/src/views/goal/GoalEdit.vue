@@ -187,6 +187,10 @@ onMounted(loadDetail)
 </template>
 
 <style scoped>
+.page-container {
+  padding: 24px;
+  max-width: 1400px;
+}
 .template-section {
   margin-bottom: 24px;
   padding-bottom: 16px;

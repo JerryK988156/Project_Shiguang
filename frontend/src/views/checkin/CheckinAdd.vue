@@ -1,11 +1,16 @@
 <script setup>
-import { onMounted, reactive, ref, watch } from 'vue'
+import { nextTick, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import confetti from 'canvas-confetti'
 
 import { addCheckinApi, getTodayCheckinApi } from '@/api/checkin'
 import { getGoalListApi } from '@/api/goal'
 
+const route = useRoute()
+
 const loading = ref(false)
+const checkinSuccess = ref(false)
 const goalList = ref([])
 const todayStatus = ref(null)
 const achievementVisible = ref(false)
@@ -39,6 +44,10 @@ const handleSubmit = async () => {
     form.content = ''
     form.remark = ''
 
+    // 打卡成功动画
+    checkinSuccess.value = true
+    setTimeout(() => { checkinSuccess.value = false }, 1500)
+
     const ach = result?.achievement
     if (ach && ach.earned) {
       achievementInfo.value = {
@@ -47,6 +56,15 @@ const handleSubmit = async () => {
         badgeName: ach.badgeName || ''
       }
       achievementVisible.value = true
+      // 成就彩带效果
+      nextTick(() => {
+        confetti({
+          particleCount: 120,
+          spread: 80,
+          origin: { y: 0.6 },
+          colors: ['#6366f1', '#f59e0b', '#10b981', '#ef4444', '#ec4899']
+        })
+      })
     }
   } finally {
     loading.value = false
@@ -57,13 +75,17 @@ watch(() => form.goalId, loadTodayStatus)
 
 onMounted(async () => {
   await loadGoals()
-  if (goalList.value.length > 0) form.goalId = goalList.value[0].id
+  if (route.query.goalId && goalList.value.some(g => String(g.id) === String(route.query.goalId))) {
+    form.goalId = route.query.goalId
+  } else if (goalList.value.length > 0) {
+    form.goalId = goalList.value[0].id
+  }
 })
 </script>
 
 <template>
   <div class="page-container">
-    <el-card v-loading="loading">
+    <el-card class="checkin-card" v-loading="loading">
       <template #header><span>今日打卡</span></template>
 
       <el-alert
@@ -92,7 +114,11 @@ onMounted(async () => {
           <el-input v-model="form.remark" type="textarea" :rows="3" placeholder="请输入心得或备注" />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSubmit">提交打卡</el-button>
+          <el-button
+            type="primary"
+            :class="{ 'checkin-success-btn': checkinSuccess }"
+            @click="handleSubmit"
+          >{{ checkinSuccess ? '✓ 打卡成功' : '提交打卡' }}</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -110,3 +136,32 @@ onMounted(async () => {
     </div>
   </el-dialog>
 </template>
+
+<style scoped lang="scss">
+.page-container {
+  padding: 24px;
+  max-width: 1400px;
+}
+
+.checkin-card {
+  border-radius: 16px;
+}
+
+.checkin-success-btn {
+  background-color: #67c23a !important;
+  border-color: #67c23a !important;
+  animation: checkin-pulse 1.5s ease-out;
+}
+
+@keyframes checkin-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(103, 194, 58, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 0 12px rgba(103, 194, 58, 0.1);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(103, 194, 58, 0);
+  }
+}
+</style>

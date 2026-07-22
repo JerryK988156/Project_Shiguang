@@ -1,6 +1,6 @@
 <script setup>
-import { ref, nextTick, watch, onUnmounted } from 'vue'
-import { chatApi } from '@/api/agent'
+import { ref, nextTick, watch, onMounted, onUnmounted } from 'vue'
+import { chatApi, chatStreamApi, loadHistory } from '@/api/agent'
 import { ChatDotRound } from '@element-plus/icons-vue'
 
 const visible = ref(false)
@@ -12,6 +12,36 @@ const messages = ref([
 const chatBodyRef = ref(null)
 const panelWidth = ref(380)
 const panelHeight = ref(520)
+
+const getOrCreateSessionId = () => {
+  let sessionId = localStorage.getItem('shiguang-chat-session-id')
+  if (!sessionId) {
+    sessionId = Date.now().toString(36) + Math.random().toString(36).substring(2, 6)
+    localStorage.setItem('shiguang-chat-session-id', sessionId)
+  }
+  return sessionId
+}
+
+const loadChatHistory = async () => {
+  try {
+    const sessionId = getOrCreateSessionId()
+    const history = await loadHistory(sessionId)
+    if (history && Array.isArray(history) && history.length > 0) {
+      const formatted = history.map(msg => ({
+        role: msg.role,
+        content: msg.content,
+        time: msg.time || ''
+      }))
+      messages.value = formatted
+    }
+  } catch {
+    // 加载失败则使用默认消息
+  }
+}
+
+onMounted(() => {
+  loadChatHistory()
+})
 
 // 拖拽放缩
 const resizing = ref(false)
@@ -78,18 +108,38 @@ const send = async () => {
 
   sending.value = true
   try {
-    // 发送完整对话历史（不含欢迎语），LLM 可获得上下文
-    const history = messages.value
-      .filter(m => m.role !== 'assistant' || m.time !== '') // 排除初始欢迎消息
-      .map(m => ({ role: m.role, content: m.content }))
-    const data = await chatApi(history)
-    const reply = data?.reply || '操作完成'
-    messages.value.push({ role: 'assistant', content: reply, time: formatTime() })
-  } catch {
-    messages.value.push({ role: 'assistant', content: '抱歉，网络出问题了，请稍后再试。', time: formatTime() })
-  } finally {
-    sending.value = false
+    // Add an empty assistant message placeholder
+    messages.value.push({ role: 'assistant', content: '', time: formatTime() })
+    const lastIdx = messages.value.length - 1
     scrollToBottom()
+
+    const history = messages.value
+      .filter(m => m.role !== 'assistant' || m.time !== '')
+      .slice(0, -1) // exclude the placeholder we just added
+      .map(m => ({ role: m.role, content: m.content }))
+
+    await chatStreamApi(
+      history,
+      // onToken
+      (token) => {
+        messages.value[lastIdx].content += token
+        scrollToBottom()
+      },
+      // onDone
+      () => {
+        sending.value = false
+        if (!messages.value[lastIdx].content) {
+          messages.value[lastIdx].content = '操作完成'
+        }
+      },
+      // onError
+      () => {
+        messages.value[lastIdx].content = '抱歉，网络出问题了，请稍后再试。'
+        sending.value = false
+      }
+    )
+  } catch {
+    sending.value = false
   }
 }
 
@@ -169,18 +219,18 @@ watch(visible, (val) => {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #409EFF, #67C23A);
+  background: linear-gradient(135deg, #6366f1, #818cf8);
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(64, 158, 255, 0.35);
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.35);
   transition: transform 0.2s, box-shadow 0.2s;
 
   &:hover {
     transform: scale(1.08);
-    box-shadow: 0 6px 20px rgba(64, 158, 255, 0.5);
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
   }
 }
 
@@ -226,7 +276,7 @@ watch(visible, (val) => {
 
 .chat-header {
   padding: 14px 18px;
-  background: linear-gradient(135deg, #409EFF, #66b1ff);
+  background: linear-gradient(135deg, #6366f1, #818cf8);
   color: #fff;
   font-weight: 600;
   font-size: 15px;

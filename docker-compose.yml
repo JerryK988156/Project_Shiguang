@@ -1,0 +1,77 @@
+version: "3.8"
+
+services:
+  # =====================================================
+  # OceanBase 数据库 — 镜像较大 (~4GB)，建议单独部署
+  # 如需使用，取消下方注释并确保 Docker 内存 >= 8GB
+  #
+  # oceanbase:
+  #   image: oceanbase/oceanbase-ce:latest
+  #   container_name: shiguang-oceanbase
+  #   environment:
+  #     MODE: mini
+  #   ports:
+  #     - "2881:2881"
+  #   volumes:
+  #     - oceanbase-data:/root/ob
+  #   restart: unless-stopped
+  # =====================================================
+
+  # Redis 缓存服务
+  redis:
+    image: redis:7-alpine
+    container_name: shiguang-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+
+  # 后端服务
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: shiguang-backend
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      # 数据库连接 (指向外部 OceanBase 或 MySQL 兼容数据库)
+      - OCEANBASE_URL=jdbc:mysql://host.docker.internal:2881/shiguang_plan?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai
+      - OCEANBASE_USERNAME=root
+      - OCEANBASE_PASSWORD=
+      - OCEANBASE_BOOTSTRAP_URL=jdbc:mysql://host.docker.internal:2881/?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai
+      - OCEANBASE_DATABASE=shiguang_plan
+      # 数据库初始化
+      - DB_VERIFY_ON_STARTUP=true
+      - DB_AUTO_INIT_ON_STARTUP=true
+      # Redis
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=
+      - CACHE_TYPE=redis
+      # AI LLM 配置
+      - AI_LLM_API_BASE_URL=https://api.deepseek.com
+      - AI_LLM_API_KEY=${AI_LLM_API_KEY}
+      - AI_LLM_MODEL=deepseek-v4-pro
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  # 前端服务
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: shiguang-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  redis-data:
+  # oceanbase-data:

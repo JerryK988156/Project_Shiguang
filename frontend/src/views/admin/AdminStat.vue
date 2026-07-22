@@ -147,6 +147,11 @@ onMounted(loadAdminData)
 </template>
 
 <style scoped lang="scss">
+.page-container {
+  padding: 24px;
+  max-width: 1400px;
+}
+
 .admin-page {
   display: grid;
   gap: 20px;

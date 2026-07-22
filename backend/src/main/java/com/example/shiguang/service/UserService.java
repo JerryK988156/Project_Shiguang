@@ -59,7 +59,7 @@ public class UserService {
             throw new BusinessException("旧密码错误");
         }
 
-        user.setPassword(PasswordUtils.md5(dto.getNewPassword()));
+        user.setPassword(PasswordUtils.encode(dto.getNewPassword()));
         userMapper.updateById(user);
     }
 

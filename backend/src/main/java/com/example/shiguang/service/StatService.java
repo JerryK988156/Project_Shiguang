@@ -8,6 +8,7 @@ import com.example.shiguang.mapper.GoalTagMapper;
 import com.example.shiguang.model.domain.CheckinRecord;
 import com.example.shiguang.model.domain.Goal;
 import com.example.shiguang.model.domain.GoalTag;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.time.DayOfWeek;
@@ -32,6 +33,7 @@ public class StatService {
         this.goalTagMapper = goalTagMapper;
     }
 
+    @Cacheable(value = "statOverview", key = "T(com.example.shiguang.common.utls.SessionUtils).requireUserId()")
     public Map<String, Object> overview() {
         Long userId = SessionUtils.requireUserId();
         List<Goal> goals = goalMapper.selectList(new LambdaQueryWrapper<Goal>()
@@ -51,6 +53,7 @@ public class StatService {
         return result;
     }
 
+    @Cacheable(value = "statTrend7", key = "T(com.example.shiguang.common.utls.SessionUtils).requireUserId()")
     public List<Map<String, Object>> trend7() {
         Long userId = SessionUtils.requireUserId();
         List<CheckinRecord> records = checkinRecordMapper.selectList(new LambdaQueryWrapper<CheckinRecord>()
@@ -73,6 +76,7 @@ public class StatService {
         return result;
     }
 
+    @Cacheable(value = "statGoalProgress", key = "T(com.example.shiguang.common.utls.SessionUtils).requireUserId()")
     public List<Map<String, Object>> goalProgress() {
         Long userId = SessionUtils.requireUserId();
         List<Goal> goals = goalMapper.selectList(new LambdaQueryWrapper<Goal>()
@@ -119,6 +123,7 @@ public class StatService {
         return Math.round((checkedDays * 1000.0 / targetDays)) / 10.0;
     }
 
+    @Cacheable(value = "statTrend30", key = "T(com.example.shiguang.common.utls.SessionUtils).requireUserId()")
     public List<Map<String, Object>> trend30() {
         return trend(30);
     }
@@ -145,6 +150,7 @@ public class StatService {
         return result;
     }
 
+    @Cacheable(value = "statTimeDist", key = "T(com.example.shiguang.common.utls.SessionUtils).requireUserId()")
     public List<Map<String, Object>> goalTimeDistribution() {
         Long userId = SessionUtils.requireUserId();
         List<Goal> goals = goalMapper.selectList(new LambdaQueryWrapper<Goal>()
@@ -170,6 +176,7 @@ public class StatService {
         return result;
     }
 
+    @Cacheable(value = "statCalendar", key = "T(com.example.shiguang.common.utls.SessionUtils).requireUserId()")
     public Map<String, Object> checkinCalendar() {
         Long userId = SessionUtils.requireUserId();
         List<CheckinRecord> records = checkinRecordMapper.selectList(new LambdaQueryWrapper<CheckinRecord>()
@@ -196,6 +203,7 @@ public class StatService {
         return result;
     }
 
+    @Cacheable(value = "statTagStats", key = "T(com.example.shiguang.common.utls.SessionUtils).requireUserId()")
     public List<Map<String, Object>> tagStats() {
         Long userId = SessionUtils.requireUserId();
         List<Goal> goals = goalMapper.selectList(new LambdaQueryWrapper<Goal>()
@@ -231,6 +239,7 @@ public class StatService {
         return result;
     }
 
+    @Cacheable(value = "statWeeklyReport", key = "T(com.example.shiguang.common.utls.SessionUtils).requireUserId()")
     public Map<String, Object> weeklyReport() {
         Long userId = SessionUtils.requireUserId();
         LocalDate now = LocalDate.now();

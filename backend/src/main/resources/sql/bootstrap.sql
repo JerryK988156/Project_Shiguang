@@ -77,11 +77,11 @@ CREATE TABLE `achievement` (
 ) DEFAULT CHARSET=utf8mb4;
 
 INSERT INTO `user` (`username`, `password`, `nickname`, `role`) VALUES
-('Jerry', '953cdbd5747772fd609cfebf0a4384f9', 'Jerry', 'admin'),
-('admin', 'e10adc3949ba59abbe56e057f20f883e', '管理员', 'admin'),
-('zhangsan', 'e10adc3949ba59abbe56e057f20f883e', '张三', 'user'),
-('lisi', 'e10adc3949ba59abbe56e057f20f883e', '李四', 'user'),
-('wangwu', 'e10adc3949ba59abbe56e057f20f883e', '王五', 'user');
+('Jerry', '$2a$10$60lH.n6WrfudZWZMY83G9eu4g4ma3f0eu6OhLzmEsowWU9Z//ucge', 'Jerry', 'admin'),
+('admin', '$2a$10$4n6WKCAQ6f7ZFwPh554bVOEDR1vrE0BoUWvtEwkR.XZZmUZRUcCKG', '管理员', 'admin'),
+('zhangsan', '$2a$10$4n6WKCAQ6f7ZFwPh554bVOEDR1vrE0BoUWvtEwkR.XZZmUZRUcCKG', '张三', 'user'),
+('lisi', '$2a$10$4n6WKCAQ6f7ZFwPh554bVOEDR1vrE0BoUWvtEwkR.XZZmUZRUcCKG', '李四', 'user'),
+('wangwu', '$2a$10$4n6WKCAQ6f7ZFwPh554bVOEDR1vrE0BoUWvtEwkR.XZZmUZRUcCKG', '王五', 'user');
 
 INSERT INTO `goal` (`user_id`, `title`, `description`, `start_date`, `end_date`, `target_days`, `status`) VALUES
 (3, '每天背 50 个单词', '使用不背单词 App', '2026-07-01', '2026-08-31', 60, '进行中'),

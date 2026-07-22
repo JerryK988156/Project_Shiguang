@@ -13,3 +13,5 @@ cookies.txt
 .env.local
 logs/
 uploads/
+*.pptx
+build_slides.js

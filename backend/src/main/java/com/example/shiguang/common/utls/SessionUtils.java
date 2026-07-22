@@ -59,6 +59,18 @@ public final class SessionUtils {
         }
     }
 
+    /** 从当前请求中提取 JWT Token（去掉 Bearer 前缀） */
+    public static String getCurrentToken() {
+        try {
+            HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
+            String authHeader = request.getHeader("Authorization");
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                return authHeader.substring(7);
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
     /**
      * 超级管理员：id 为 1 且角色为 admin 的用户
      */

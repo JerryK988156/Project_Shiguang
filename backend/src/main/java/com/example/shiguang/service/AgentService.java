@@ -1,7 +1,10 @@
 package com.example.shiguang.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.shiguang.common.config.AiConfig;
 import com.example.shiguang.common.utls.SessionUtils;
+import com.example.shiguang.mapper.AgentMessageMapper;
+import com.example.shiguang.model.domain.AgentMessage;
 import com.example.shiguang.model.domain.CheckinRecord;
 import com.example.shiguang.model.domain.Goal;
 import com.example.shiguang.model.dto.CheckinDTO;
@@ -11,53 +14,58 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 public class AgentService {
+
+    private static final Logger log = LoggerFactory.getLogger(AgentService.class);
 
     private final RestClient llmRestClient;
     private final ObjectMapper objectMapper;
     private final GoalService goalService;
     private final CheckinService checkinService;
     private final StatService statService;
+    private final AgentMessageMapper agentMessageMapper;
     private final String model;
 
     public AgentService(RestClient llmRestClient, ObjectMapper objectMapper,
                         GoalService goalService, CheckinService checkinService,
-                        StatService statService, AiConfig aiConfig) {
+                        StatService statService, AiConfig aiConfig,
+                        AgentMessageMapper agentMessageMapper) {
         this.llmRestClient = llmRestClient;
         this.objectMapper = objectMapper;
         this.goalService = goalService;
         this.checkinService = checkinService;
         this.statService = statService;
+        this.agentMessageMapper = agentMessageMapper;
         this.model = aiConfig.getModel();
     }
 
     private static final String SYSTEM_PROMPT = """
-        你是"拾光计划"学习打卡系统的智能助手。你可以自由地与用户对话，同时也能帮助用户管理系统：
-        1. 创建学习目标（addGoal）
-        2. 打卡记录学习（addCheckin）
-        3. 查看目标列表（listGoals）
-        4. 查看统计概览（getStatsOverview）
-        5. 查看打卡趋势（getTrend）
-        6. 查看打卡日历（getCheckinCalendar）
-        7. 查看打卡记录（listCheckins）
-        8. 修改目标状态（updateGoalStatus）
-
+        你是"拾光计划"学习打卡系统的智能助手。你可以使用函数调用来帮助用户管理系统。
         规则：
-        - 你可以和用户聊任何话题，不必局限于学习打卡
-        - 当用户的操作涉及目标或打卡管理时，调用对应的函数
-        - 如果用户想打卡但没有指定目标，先调用 listGoals 获取目标列表让用户选择
-        - 日期格式统一为 yyyy-MM-dd，今天日期需要根据当前时间推断
+        - 如果用户想打卡但没有指定目标，先调用 listGoals 再调用 addCheckin
+        - 日期格式 yyyy-MM-dd，今天是2026-07-21
+        - addCheckin 的 minutes 是学习分钟数（2小时=120分钟）
         - 回复时使用友好、鼓励的语气
-        - startDate 如果用户说"从今天开始"，使用当天日期
-        - endDate 如果用户没有明确指定，可以设为 startDate 之后30天
+        - 调用 listGoals 拿到目标列表后，根据用户意图匹配最相关的目标进行打卡
+        - 回复格式使用纯文本，不要使用 Markdown 表格、不要使用 ## 标题、不要使用 ** 加粗、不要使用 --- 分隔线
+        - 列表使用 - 开头即可，每行一条
         """;
 
     private static final String TOOLS_JSON = """
@@ -173,37 +181,278 @@ public class AgentService {
         """;
 
     /**
-     * 处理对话历史，返回 AI 回复文本
+     * 标准 function calling 流程：发送 tools，循环处理 tool_calls 直至完成。
      */
-    public String chat(List<Map<String, String>> history) {
+    public String chat(Long userId, String sessionId, List<Map<String, String>> history) {
         try {
-            // Step 1: 调用 LLM，携带 function definitions 和完整对话历史
-            JsonNode llmResponse = callLlm(history);
-            String finishReason = llmResponse.path("choices").path(0).path("finish_reason").asText();
-
-            // Step 2: 如果 LLM 要求调用函数
-            if ("tool_calls".equals(finishReason)) {
-                JsonNode toolCalls = llmResponse.path("choices").path(0).path("message").path("tool_calls");
-                String assistantContent = llmResponse.path("choices").path(0).path("message").path("content").asText();
-
-                // 执行函数
-                JsonNode funcResult = executeToolCalls(toolCalls);
-
-                // Step 3: 将函数执行结果返回 LLM 生成最终回复（携带完整历史）
-                JsonNode finalResponse = callLlmWithToolsResult(
-                        history,
-                        toolCalls,
-                        assistantContent,
-                        funcResult
-                );
-                return finalResponse.path("choices").path(0).path("message").path("content").asText("操作完成！");
+            // 保存用户消息
+            if (history != null && !history.isEmpty()) {
+                Map<String, String> lastUserMsg = null;
+                for (int i = history.size() - 1; i >= 0; i--) {
+                    if ("user".equals(history.get(i).get("role"))) {
+                        lastUserMsg = history.get(i);
+                        break;
+                    }
+                }
+                if (lastUserMsg != null) {
+                    saveMessage(userId, sessionId, "user", lastUserMsg.get("content"));
+                }
             }
 
-            // Step 4: 无需函数调用，直接返回 LLM 回复
-            return llmResponse.path("choices").path(0).path("message").path("content").asText("请告诉我你需要什么帮助？");
+            ArrayNode messages = objectMapper.createArrayNode();
+            messages.addObject().put("role", "system").put("content", SYSTEM_PROMPT);
+            for (Map<String, String> msg : history) {
+                messages.addObject().put("role", msg.get("role")).put("content", msg.get("content"));
+            }
 
+            for (int round = 0; round < 5; round++) {
+                JsonNode response = callLlm(messages);
+                String content = response.path("choices").path(0).path("message").path("content").asText("");
+                String finishReason = response.path("choices").path(0).path("finish_reason").asText("");
+
+                if ("tool_calls".equals(finishReason)) {
+                    JsonNode toolCalls = response.path("choices").path(0).path("message").path("tool_calls");
+
+                    // 添加 assistant 消息
+                    ObjectNode asst = messages.addObject();
+                    asst.put("role", "assistant");
+                    if (content != null && !content.isBlank()) asst.put("content", content);
+                    asst.set("tool_calls", toolCalls);
+
+                    // 执行并添加 tool 结果
+                    for (JsonNode tc : toolCalls) {
+                        String callId = tc.path("id").asText();
+                        String funcName = tc.path("function").path("name").asText();
+                        String argsStr = tc.path("function").path("arguments").asText();
+                        String result;
+                        try { result = executeFunction(funcName, argsStr); }
+                        catch (Exception e) { result = "操作失败：" + e.getMessage(); }
+                        log.debug("Agent called {} ({}) => {}", funcName, argsStr, result);
+
+                        ObjectNode tool = messages.addObject();
+                        tool.put("role", "tool");
+                        tool.put("tool_call_id", callId);
+                        tool.put("content", result);
+                    }
+                    continue;
+                }
+
+                String finalReply = content.isBlank() ? "请告诉我你需要什么帮助？" : stripEmoji(cleanMarkers(content));
+                saveMessage(userId, sessionId, "assistant", finalReply);
+                return finalReply;
+            }
+            String fallback = "抱歉，操作次数过多，请简化你的请求。";
+            saveMessage(userId, sessionId, "assistant", fallback);
+            return fallback;
         } catch (Exception e) {
-            return "抱歉，智能助手暂时无法处理你的请求，请稍后重试。你也可以通过页面菜单手动操作。";
+            return "抱歉，智能助手暂时无法处理你的请求，请稍后重试。";
+        }
+    }
+
+    /** 保存消息到数据库 */
+    public void saveMessage(Long userId, String sessionId, String role, String content) {
+        AgentMessage msg = new AgentMessage();
+        msg.setUserId(userId);
+        msg.setSessionId(sessionId);
+        msg.setRole(role);
+        msg.setContent(content);
+        msg.setCreateTime(LocalDateTime.now());
+        agentMessageMapper.insert(msg);
+    }
+
+    /** 加载聊天历史，最近 50 条 */
+    public List<Map<String, String>> loadHistory(Long userId, String sessionId) {
+        List<AgentMessage> messages = agentMessageMapper.selectList(
+                new LambdaQueryWrapper<AgentMessage>()
+                        .eq(AgentMessage::getUserId, userId)
+                        .eq(AgentMessage::getSessionId, sessionId)
+                        .orderByAsc(AgentMessage::getCreateTime)
+                        .last("limit 50"));
+        List<Map<String, String>> result = new ArrayList<>();
+        for (AgentMessage msg : messages) {
+            Map<String, String> item = new HashMap<>();
+            item.put("role", msg.getRole());
+            item.put("content", msg.getContent());
+            result.add(item);
+        }
+        return result;
+    }
+
+    /** 发送 messages + tools 到 LLM */
+    private JsonNode callLlm(ArrayNode messages) throws JsonProcessingException {
+        ObjectNode body = objectMapper.createObjectNode();
+        body.put("model", model);
+        body.set("messages", messages);
+        body.set("tools", objectMapper.readTree(TOOLS_JSON));
+
+        String response = llmRestClient.post()
+                .uri("/v1/chat/completions")
+                .body(body.toString())
+                .retrieve()
+                .body(String.class);
+
+        return objectMapper.readTree(response);
+    }
+
+    // ── 函数调用解析 ──
+
+    private record FuncCall(String name, String args) {}
+    private record ParseResult(String visibleText, java.util.List<FuncCall> calls) {
+        boolean hasCalls() { return calls != null && !calls.isEmpty(); }
+    }
+
+    /**
+     * 从 LLM 返回的 content 中解析函数调用。
+     * 同时支持：
+     * 1. DeepSeek 原生格式：<｜tool_calls▁begin｜><｜tool_call▁begin｜>name<｜tool_call▁separator▁begin｜>json<｜tool_call▁end｜><｜tool_calls▁end｜>
+     * 2. 自定义格式：<!--FUNC:name {"json"}-->
+     */
+    private ParseResult parseFunctionCalls(String content) {
+        java.util.List<FuncCall> calls = new java.util.ArrayList<>();
+
+        // 尝试 DeepSeek 原生格式
+        String dsBegin = "<｜tool_calls▁begin｜>";
+        int dsIdx = content.indexOf(dsBegin);
+        if (dsIdx >= 0) {
+            String visible = content.substring(0, dsIdx).trim();
+            String toolSection = content.substring(dsIdx);
+
+            // 匹配每个 tool_call 块: <｜tool_call▁begin｜>name<|tool_call_separator_begin|>args<｜tool_call▁end｜>
+            java.util.regex.Pattern p = java.util.regex.Pattern.compile(
+                "<｜tool_call▁begin｜>(.+?)(?:<｜tool_call▁separator▁begin｜>(.+?))?<｜tool_call▁end｜>"
+            );
+            java.util.regex.Matcher m = p.matcher(toolSection);
+            while (m.find()) {
+                String name = m.group(1).trim();
+                String args = m.group(2) != null ? m.group(2).trim() : "{}";
+                calls.add(new FuncCall(name, args));
+            }
+            return new ParseResult(visible, calls);
+        }
+
+        // 尝试自定义 <!--CALL:name args--> 或 <!--FUNC:name args--> 格式
+        String funcMarker = null;
+        int markerIdx = -1;
+        for (String m : new String[]{"<!--CALL:", "<!--FUNC:"}) {
+            int idx = content.indexOf(m);
+            if (idx >= 0 && (markerIdx < 0 || idx < markerIdx)) {
+                markerIdx = idx;
+                funcMarker = m;
+            }
+        }
+        if (markerIdx >= 0) {
+            int markerEnd = content.indexOf("-->", markerIdx);
+            if (markerEnd > markerIdx) {
+                String visible = content.substring(0, markerIdx).trim();
+                String funcCall = content.substring(markerIdx + funcMarker.length(), markerEnd).trim();
+                int spaceIdx = funcCall.indexOf(' ');
+                if (spaceIdx > 0) {
+                    calls.add(new FuncCall(funcCall.substring(0, spaceIdx), funcCall.substring(spaceIdx + 1)));
+                } else {
+                    calls.add(new FuncCall(funcCall, "{}"));
+                }
+                return new ParseResult(visible, calls);
+            }
+        }
+
+        return new ParseResult(content, calls);
+    }
+
+    /** 清理残留的 DeepSeek 特殊标记 */
+    private String cleanMarkers(String text) {
+        if (text == null) return "";
+        return text.replaceAll("<｜tool_calls▁begin｜>.*", "")
+                   .replaceAll("<｜tool_call▁begin｜>.*", "")
+                   .replaceAll("<｜tool_call▁end｜>", "")
+                   .replaceAll("<｜tool_calls▁end｜>", "")
+                   .replaceAll("<｜tool_call▁separator▁begin｜>.*", "")
+                   .trim();
+    }
+
+    /** 移除渲染乱码 + Markdown→纯文本转换 */
+    private String stripEmoji(String text) {
+        if (text == null) return "";
+        String cleaned = text;
+        // 移除所有连续 ? 字符（Unicode 渲染失败产物）
+        cleaned = cleaned.replaceAll("\\?{2,}", "");
+        // 移除不可打印的控制字符和私有区字符（保留中文、ASCII、常用标点）
+        cleaned = cleaned.replaceAll("[\\p{Cntrl}&&[^\r\n\t]]", "");
+        // Markdown → 纯文本转换
+        cleaned = cleaned.replaceAll("(?m)^#{1,6}\\s+", "");      // ## 标题
+        cleaned = cleaned.replaceAll("\\*\\*(.+?)\\*\\*", "$1");  // **加粗**
+        cleaned = cleaned.replaceAll("(?m)^---+$", "");            // --- 分隔线
+        cleaned = cleaned.replaceAll("\\|", " ");                  // 表格 |
+        // 合并多余空行
+        cleaned = cleaned.replaceAll("\n{3,}", "\n\n");
+        return cleaned.trim();
+    }
+
+    /**
+     * 真正的流式对话 — 调用 LLM API 时设置 stream: true，逐 token 回调
+     */
+    public void chatStream(Long userId, String sessionId, List<Map<String, String>> history, java.util.function.Consumer<String> onToken) {
+        try {
+            // 保存用户消息
+            if (history != null && !history.isEmpty()) {
+                Map<String, String> lastUserMsg = null;
+                for (int i = history.size() - 1; i >= 0; i--) {
+                    if ("user".equals(history.get(i).get("role"))) {
+                        lastUserMsg = history.get(i);
+                        break;
+                    }
+                }
+                if (lastUserMsg != null) {
+                    saveMessage(userId, sessionId, "user", lastUserMsg.get("content"));
+                }
+            }
+
+            ArrayNode messages = objectMapper.createArrayNode();
+            messages.addObject().put("role", "system").put("content", SYSTEM_PROMPT);
+            for (Map<String, String> msg : history) {
+                messages.addObject().put("role", msg.get("role")).put("content", msg.get("content"));
+            }
+
+            ObjectNode body = objectMapper.createObjectNode();
+            body.put("model", model);
+            body.set("messages", messages);
+            body.set("tools", objectMapper.readTree(TOOLS_JSON));
+            body.put("stream", true);
+
+            StringBuilder fullReply = new StringBuilder();
+            
+            llmRestClient.post()
+                    .uri("/v1/chat/completions")
+                    .body(body.toString())
+                    .exchange((request, response) -> {
+                        try (var reader = new BufferedReader(
+                                new InputStreamReader(response.getBody(), StandardCharsets.UTF_8))) {
+                            String line;
+                            while ((line = reader.readLine()) != null) {
+                                if (line.startsWith("data: ")) {
+                                    String data = line.substring(6).trim();
+                                    if ("[DONE]".equals(data)) break;
+                                    try {
+                                        JsonNode chunk = objectMapper.readTree(data);
+                                        String delta = chunk.path("choices").path(0).path("delta").path("content").asText("");
+                                        if (!delta.isEmpty()) {
+                                            fullReply.append(delta);
+                                            onToken.accept(delta);
+                                        }
+                                    } catch (Exception ignored) {}
+                                }
+                            }
+                        }
+                        return null;
+                    });
+
+            String finalReply = fullReply.toString();
+            if (!finalReply.isBlank()) {
+                String cleaned = stripEmoji(cleanMarkers(finalReply));
+                saveMessage(userId, sessionId, "assistant", cleaned);
+            }
+        } catch (Exception e) {
+            log.error("Agent stream error", e);
+            onToken.accept("[抱歉，智能助手暂时无法处理你的请求]");
         }
     }
 
@@ -225,73 +474,11 @@ public class AgentService {
             historyMsg.put("content", msg.get("content"));
         }
 
-        // Tools
-        body.set("tools", objectMapper.readTree(TOOLS_JSON));
-        body.put("tool_choice", "auto");
-
-        String response = llmRestClient.post()
-                .uri("/v1/chat/completions")
-                .body(body.toString())
-                .retrieve()
-                .body(String.class);
-
-        return objectMapper.readTree(response);
-    }
-
-    private JsonNode executeToolCalls(JsonNode toolCalls) {
-        ArrayNode results = objectMapper.createArrayNode();
-        for (JsonNode toolCall : toolCalls) {
-            String funcName = toolCall.path("function").path("name").asText();
-            String callId = toolCall.path("id").asText();
-            String argsStr = toolCall.path("function").path("arguments").asText();
-
-            ObjectNode result = objectMapper.createObjectNode();
-            result.put("tool_call_id", callId);
-            result.put("role", "tool");
-
-            try {
-                String content = executeFunction(funcName, argsStr);
-                result.put("content", content);
-            } catch (Exception e) {
-                result.put("content", "操作失败：" + e.getMessage());
-            }
-            results.add(result);
-        }
-        return results;
-    }
-
-    private JsonNode callLlmWithToolsResult(List<Map<String, String>> history, JsonNode toolCalls,
-                                             String assistantContent, JsonNode funcResults) throws JsonProcessingException {
-        ObjectNode body = objectMapper.createObjectNode();
-        body.put("model", model);
-        ArrayNode messages = body.putArray("messages");
-
-        ObjectNode sysMsg = messages.addObject();
-        sysMsg.put("role", "system");
-        sysMsg.put("content", SYSTEM_PROMPT);
-
-        // 对话历史
-        for (Map<String, String> msg : history) {
-            ObjectNode historyMsg = messages.addObject();
-            historyMsg.put("role", msg.get("role"));
-            historyMsg.put("content", msg.get("content"));
-        }
-
-        // Assistant message with tool calls
-        ObjectNode assistantMsg = messages.addObject();
-        assistantMsg.put("role", "assistant");
-        if (assistantContent != null && !assistantContent.isEmpty()) {
-            assistantMsg.put("content", assistantContent);
-        }
-        assistantMsg.set("tool_calls", toolCalls);
-
-        // Tool results
-        for (JsonNode result : funcResults) {
-            ObjectNode toolMsg = messages.addObject();
-            toolMsg.put("role", "tool");
-            toolMsg.put("tool_call_id", result.path("tool_call_id").asText());
-            toolMsg.put("content", result.path("content").asText());
-        }
+        // 发送 tools 定义（DeepSeek 使用原生文本格式输出，但需要知道可用函数）
+        try {
+            JsonNode toolsNode = objectMapper.readTree(TOOLS_JSON);
+            body.set("tools", toolsNode);
+        } catch (JsonProcessingException ignored) {}
 
         String response = llmRestClient.post()
                 .uri("/v1/chat/completions")

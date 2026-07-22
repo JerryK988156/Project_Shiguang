@@ -2,6 +2,7 @@ package com.example.shiguang.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.shiguang.common.BusinessException;
+import com.example.shiguang.common.service.TokenBlacklistService;
 import com.example.shiguang.common.utls.PasswordUtils;
 import com.example.shiguang.common.utls.JwtUtils;
 import com.example.shiguang.common.utls.SessionUtils;
@@ -9,6 +10,7 @@ import com.example.shiguang.mapper.UserMapper;
 import com.example.shiguang.model.domain.User;
 import com.example.shiguang.model.dto.LoginDTO;
 import com.example.shiguang.model.dto.RegisterDTO;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -18,9 +20,11 @@ import java.util.Map;
 @Service
 public class AuthService {
     private final UserMapper userMapper;
+    private final TokenBlacklistService tokenBlacklistService;
 
-    public AuthService(UserMapper userMapper) {
+    public AuthService(UserMapper userMapper, ObjectProvider<TokenBlacklistService> tokenBlacklistProvider) {
         this.userMapper = userMapper;
+        this.tokenBlacklistService = tokenBlacklistProvider.getIfAvailable();
     }
 
     public Map<String, Object> login(LoginDTO loginDTO) {
@@ -38,9 +42,16 @@ public class AuthService {
             throw new BusinessException("账号已被禁用");
         }
 
+        // 如果密码仍是 MD5 格式，自动升级为 BCrypt
+        if (!PasswordUtils.isBcrypt(user.getPassword())) {
+            user.setPassword(PasswordUtils.encode(loginDTO.getPassword()));
+            userMapper.updateById(user);
+        }
+
         SessionUtils.login(user);
         Map<String, Object> result = toSafeUser(user);
-        result.put("token", JwtUtils.generateToken(user.getId(), user.getRole()));
+        result.put("accessToken", JwtUtils.generateAccessToken(user.getId(), user.getRole()));
+        result.put("refreshToken", JwtUtils.generateRefreshToken(user.getId(), user.getRole()));
         return result;
     }
 
@@ -64,7 +75,7 @@ public class AuthService {
 
         User user = new User();
         user.setUsername(registerDTO.getUsername());
-        user.setPassword(PasswordUtils.md5(registerDTO.getPassword()));
+        user.setPassword(PasswordUtils.encode(registerDTO.getPassword()));
         user.setNickname(StringUtils.hasText(registerDTO.getNickname()) ? registerDTO.getNickname() : registerDTO.getUsername());
         user.setRole("user");
         user.setStatus(1);
@@ -72,11 +83,19 @@ public class AuthService {
 
         SessionUtils.login(user);
         Map<String, Object> result = toSafeUser(user);
-        result.put("token", JwtUtils.generateToken(user.getId(), user.getRole()));
+        result.put("accessToken", JwtUtils.generateAccessToken(user.getId(), user.getRole()));
+        result.put("refreshToken", JwtUtils.generateRefreshToken(user.getId(), user.getRole()));
         return result;
     }
 
     public void logout() {
+        // 将当前 token 加入黑名单
+        if (tokenBlacklistService != null) {
+            String token = SessionUtils.getCurrentToken();
+            if (token != null && !token.isBlank()) {
+                tokenBlacklistService.addToBlacklist(token);
+            }
+        }
         SessionUtils.logout();
     }
 

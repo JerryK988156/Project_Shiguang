@@ -8,6 +8,7 @@ import com.example.shiguang.mapper.GoalMapper;
 import com.example.shiguang.model.domain.CheckinRecord;
 import com.example.shiguang.model.domain.Goal;
 import com.example.shiguang.model.dto.CheckinDTO;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -30,6 +31,7 @@ public class CheckinService {
         this.achievementService = achievementService;
     }
 
+    @CacheEvict(value = {"statOverview","statTrend7","statTrend30","statGoalProgress","statCalendar","statTagStats","statWeeklyReport","statTimeDist"}, key = "T(com.example.shiguang.common.utls.SessionUtils).requireUserId()")
     public Map<String, Object> add(CheckinDTO dto) {
         if (dto == null || dto.getGoalId() == null) {
             throw new BusinessException("目标不能为空");
@@ -86,6 +88,13 @@ public class CheckinService {
                 .eq(CheckinRecord::getUserId, SessionUtils.requireUserId())
                 .eq(CheckinRecord::getCheckinDate, LocalDate.now())
                 .orderByDesc(CheckinRecord::getId));
+        // 填充目标名称
+        for (CheckinRecord r : todayRecords) {
+            Goal goal = goalMapper.selectById(r.getGoalId());
+            if (goal != null) {
+                r.setGoalTitle(goal.getTitle());
+            }
+        }
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("date", LocalDate.now());
         result.put("records", todayRecords);

@@ -1,14 +1,23 @@
 <script setup>
 import { onMounted, onUnmounted, ref, watch, nextTick } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import * as echarts from 'echarts'
 
 const route = useRoute()
+const router = useRouter()
 
 import { getStatOverviewApi, getStatTrend7Api, getStatTrend30Api, getGoalProgressApi, getCheckinCalendarApi } from '@/api/stat'
 import { askPermission, sendNotification, shouldNotifyToday } from '@/utils/notification'
+import { Tickets, Calendar, Timer, TrendCharts } from '@element-plus/icons-vue'
 
 const overview = ref({
+  totalGoals: 0,
+  totalCheckins: 0,
+  totalMinutes: 0,
+  streakDays: 0
+})
+
+const animatedNumbers = ref({
   totalGoals: 0,
   totalCheckins: 0,
   totalMinutes: 0,
@@ -22,6 +31,33 @@ const calendarData = ref({ data: [], maxCount: 1, maxPossible: 1 })
 const loading = ref(false)
 const statsRange = ref('7')
 const notifyEnabled = ref(localStorage.getItem('shiguang-notify-enabled') === 'true')
+
+const animateValue = (key, target) => {
+  const duration = 800
+  const start = animatedNumbers.value[key]
+  const diff = target - start
+  const startTime = performance.now()
+  
+  const step = (currentTime) => {
+    const elapsed = currentTime - startTime
+    const progress = Math.min(elapsed / duration, 1)
+    const eased = 1 - Math.pow(1 - progress, 3)
+    animatedNumbers.value[key] = Math.round(start + diff * eased)
+    if (progress < 1) {
+      requestAnimationFrame(step)
+    }
+  }
+  requestAnimationFrame(step)
+}
+
+watch(overview, (val) => {
+  if (val.totalGoals > 0 || val.totalCheckins > 0) {
+    animateValue('totalGoals', val.totalGoals)
+    animateValue('totalCheckins', val.totalCheckins)
+    animateValue('totalMinutes', val.totalMinutes)
+    animateValue('streakDays', val.streakDays)
+  }
+}, { deep: true })
 
 const trendChartRef = ref(null)
 const pieChartRef = ref(null)
@@ -256,12 +292,11 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="dashboard-page" v-loading="loading">
+  <div class="dashboard-page">
     <el-card class="welcome-card">
       <template #header>
         <div class="card-title">学习概览</div>
       </template>
-
       <p>这里展示当前账号的目标执行情况、累计打卡和近 7 天趋势。</p>
     </el-card>
 
@@ -269,55 +304,176 @@ onUnmounted(() => {
       <el-switch v-model="notifyEnabled" active-text="打卡提醒" />
     </div>
 
-    <div class="info-grid">
-      <el-card>
-        <div class="info-label">目标总数</div>
-        <div class="info-value">{{ overview.totalGoals }}</div>
-      </el-card>
-      <el-card>
-        <div class="info-label">打卡总数</div>
-        <div class="info-value">{{ overview.totalCheckins }}</div>
-      </el-card>
-      <el-card>
-        <div class="info-label">累计时长</div>
-        <div class="info-value">{{ overview.totalMinutes }} 分钟</div>
-      </el-card>
-      <el-card>
-        <div class="info-label">连续打卡</div>
-        <div class="info-value">{{ overview.streakDays }} 天</div>
-      </el-card>
-    </div>
-
-    <el-card>
-      <template #header>
-        <div class="card-title">目标状态分布</div>
-      </template>
-      <div ref="pieChartRef" class="chart-container"></div>
-    </el-card>
-
-    <el-card>
-      <template #header>
-        <div class="card-title">打卡日历</div>
-      </template>
-      <div ref="calendarRef" class="chart-container chart-calendar"></div>
-    </el-card>
-
-    <el-card>
-      <template #header>
-        <div class="card-header-row">
-          <span class="card-title">打卡趋势</span>
-          <el-radio-group v-model="statsRange" size="small">
-            <el-radio-button value="7">7 天</el-radio-button>
-            <el-radio-button value="30">30 天</el-radio-button>
-          </el-radio-group>
+    <!-- 骨架屏 -->
+    <template v-if="loading">
+      <div class="info-grid">
+        <div v-for="i in 4" :key="i" class="info-card skeleton-pulse">
+          <el-skeleton animated>
+            <template #template>
+              <div style="display:flex;align-items:center;gap:16px;padding:8px 0">
+                <el-skeleton-item variant="circle" style="width:52px;height:52px" />
+                <div style="flex:1">
+                  <el-skeleton-item variant="text" style="width:60px;margin-bottom:8px" />
+                  <el-skeleton-item variant="text" style="width:80px;height:32px" />
+                </div>
+              </div>
+            </template>
+          </el-skeleton>
         </div>
-      </template>
-      <div ref="trendChartRef" class="chart-container"></div>
-    </el-card>
+      </div>
+      <el-card><div class="chart-container"><el-skeleton animated :rows="6" /></div></el-card>
+      <el-card><div class="chart-container chart-calendar"><el-skeleton animated :rows="4" /></div></el-card>
+      <el-card><div class="chart-container"><el-skeleton animated :rows="6" /></div></el-card>
+    </template>
+
+    <!-- 实际内容 -->
+    <template v-else>
+      <div class="info-grid">
+        <div class="info-card">
+          <div class="info-icon" style="background: #eef2ff; color: #6366f1;">
+            <el-icon :size="24"><Tickets /></el-icon>
+          </div>
+          <div class="info-content">
+            <div class="info-label">目标总数</div>
+            <div class="info-value">{{ animatedNumbers.totalGoals }}</div>
+          </div>
+        </div>
+        <div class="info-card">
+          <div class="info-icon" style="background: #d1fae5; color: #10b981;">
+            <el-icon :size="24"><Calendar /></el-icon>
+          </div>
+          <div class="info-content">
+            <div class="info-label">打卡总数</div>
+            <div class="info-value">{{ animatedNumbers.totalCheckins }}</div>
+          </div>
+        </div>
+        <div class="info-card">
+          <div class="info-icon" style="background: #fef3c7; color: #f59e0b;">
+            <el-icon :size="24"><Timer /></el-icon>
+          </div>
+          <div class="info-content">
+            <div class="info-label">累计时长</div>
+            <div class="info-value">{{ animatedNumbers.totalMinutes }} <span class="info-unit">分钟</span></div>
+          </div>
+        </div>
+        <div class="info-card">
+          <div class="info-icon" style="background: #fee2e2; color: #ef4444;">
+            <el-icon :size="24"><TrendCharts /></el-icon>
+          </div>
+          <div class="info-content">
+            <div class="info-label">连续打卡</div>
+            <div class="info-value">{{ animatedNumbers.streakDays }} <span class="info-unit">天</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 目标卡片列表 -->
+      <el-card v-if="goalList.length > 0">
+        <template #header><div class="card-title">我的目标</div></template>
+        <div class="goal-cards">
+          <div v-for="goal in goalList" :key="goal.id" class="goal-card-item">
+            <div class="goal-card-left">
+              <h4 class="goal-card-title">{{ goal.title }}</h4>
+              <div class="goal-card-meta">
+                <el-tag :type="goal.status === '已完成' ? 'success' : goal.status === '已放弃' ? 'info' : 'warning'" size="small">
+                  {{ goal.status || '进行中' }}
+                </el-tag>
+                <span class="goal-card-days">{{ goal.completedDays || 0 }} / {{ goal.targetDays || 0 }} 天</span>
+              </div>
+            </div>
+            <el-button
+              v-if="goal.status !== '已完成' && goal.status !== '已放弃'"
+              size="small"
+              type="success"
+              plain
+              @click="router.push({ path: '/checkin/add', query: { goalId: goal.id } })"
+            >打卡</el-button>
+          </div>
+        </div>
+      </el-card>
+
+      <el-card>
+        <template #header><div class="card-title">目标状态分布</div></template>
+        <div ref="pieChartRef" class="chart-container"></div>
+      </el-card>
+      <el-card>
+        <template #header><div class="card-title">打卡日历</div></template>
+        <div ref="calendarRef" class="chart-container chart-calendar"></div>
+      </el-card>
+      <el-card>
+        <template #header>
+          <div class="card-header-row">
+            <span class="card-title">打卡趋势</span>
+            <el-radio-group v-model="statsRange" size="small">
+              <el-radio-button value="7">7 天</el-radio-button>
+              <el-radio-button value="30">30 天</el-radio-button>
+            </el-radio-group>
+          </div>
+        </template>
+        <div ref="trendChartRef" class="chart-container"></div>
+      </el-card>
+    </template>
   </div>
 </template>
 
 <style scoped lang="scss">
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.info-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  border: 1px solid #f1f5f9;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  }
+}
+
+.info-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.info-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.info-label {
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.info-value {
+  font-size: 28px;
+  font-weight: 800;
+  color: #1e293b;
+  line-height: 1.2;
+}
+
+.info-unit {
+  font-size: 14px;
+  font-weight: 500;
+  color: #94a3b8;
+}
+
 .dashboard-page {
   display: grid;
   gap: 20px;
@@ -336,23 +492,6 @@ onUnmounted(() => {
   align-items: center;
 }
 
-.info-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 20px;
-}
-
-.info-label {
-  margin-bottom: 12px;
-  color: #6b7280;
-}
-
-.info-value {
-  font-size: 24px;
-  font-weight: 700;
-  color: #111827;
-}
-
 .chart-container {
   width: 100%;
   height: 380px;
@@ -366,5 +505,82 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.skeleton-pulse {
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.goal-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 12px;
+}
+
+.goal-card-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  transition: box-shadow 0.2s;
+}
+
+.goal-card-item:hover {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.goal-card-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.goal-card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 6px 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.goal-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.goal-card-days {
+  font-size: 13px;
+  color: #64748b;
+}
+
+@media (max-width: 768px) {
+  .info-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .goal-cards {
+    grid-template-columns: 1fr !important;
+  }
+
+  .chart-container {
+    height: 260px;
+  }
+
+  .chart-calendar {
+    height: 240px;
+  }
+
+  .info-value {
+    font-size: 22px;
+  }
 }
 </style>

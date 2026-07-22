@@ -4,6 +4,8 @@ import com.example.shiguang.common.JsonResponse;
 import com.example.shiguang.model.dto.UpdatePasswordDTO;
 import com.example.shiguang.model.dto.UpdateProfileDTO;
 import com.example.shiguang.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -52,6 +54,7 @@ public class UserController {
         return JsonResponse.success(null, "修改密码成功");
     }
 
+    @Operation(summary = "上传头像")
     @PostMapping("/avatar")
     public JsonResponse<Map<String, Object>> uploadAvatar(@RequestParam("file") MultipartFile file) throws IOException {
         if (file.isEmpty()) {

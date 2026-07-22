@@ -182,6 +182,7 @@ const handleUpdatePassword = async () => {
   gap: 20px;
   max-width: 540px;
   margin: 0 auto;
+  padding: 24px;
 }
 
 .avatar-section {

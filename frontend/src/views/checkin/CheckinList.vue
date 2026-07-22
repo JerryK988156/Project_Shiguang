@@ -1,9 +1,12 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessageBox, ElMessage } from 'element-plus'
 
 import { deleteCheckinApi, getCheckinListApi } from '@/api/checkin'
 import { getGoalListApi } from '@/api/goal'
+
+const router = useRouter()
 
 const loading = ref(false)
 const goalList = ref([])
@@ -97,7 +100,13 @@ onMounted(async () => {
         <el-button type="success" @click="handleExport">导出 CSV</el-button>
       </div>
 
-      <el-table v-loading="loading" :data="checkinList" stripe @row-click="handleRowClick" style="cursor: pointer">
+      <template v-if="loading">
+        <el-skeleton animated :rows="8" :throttle="0" style="padding: 24px" />
+      </template>
+      <el-empty v-else-if="checkinList.length === 0" description="还没有打卡记录">
+        <el-button type="primary" @click="router.push('/checkin/add')">去打卡</el-button>
+      </el-empty>
+      <el-table v-else :data="checkinList" stripe @row-click="handleRowClick" style="cursor: pointer">
         <el-table-column prop="checkinDate" label="打卡日期" min-width="120" />
         <el-table-column prop="goalTitle" label="目标名称" min-width="180" />
         <el-table-column prop="studyDuration" label="学习时长(分钟)" min-width="130" />
@@ -123,3 +132,10 @@ onMounted(async () => {
     </el-dialog>
   </div>
 </template>
+
+<style scoped>
+.page-container {
+  padding: 24px;
+  max-width: 1400px;
+}
+</style>

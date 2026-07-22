@@ -8,6 +8,7 @@ import com.example.shiguang.mapper.GoalTagMapper;
 import com.example.shiguang.model.domain.Goal;
 import com.example.shiguang.model.domain.GoalTag;
 import com.example.shiguang.model.dto.GoalDTO;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -82,6 +83,7 @@ public class GoalService {
         return fillTags(goalMapper.selectById(goal.getId()));
     }
 
+    @CacheEvict(value = {"statOverview","statTrend7","statTrend30","statGoalProgress","statCalendar","statTagStats","statWeeklyReport","statTimeDist"}, key = "T(com.example.shiguang.common.utls.SessionUtils).requireUserId()")
     public void delete(Long id) {
         Goal goal = requireOwnedGoal(id);
         goalMapper.deleteById(goal.getId());
@@ -92,11 +94,22 @@ public class GoalService {
     }
 
     public List<Goal> list(String status) {
+        return list(status, null);
+    }
+
+    public List<Goal> list(String status, String keyword) {
         LambdaQueryWrapper<Goal> wrapper = new LambdaQueryWrapper<Goal>()
                 .eq(Goal::getUserId, SessionUtils.requireUserId())
                 .orderByDesc(Goal::getCreateTime);
         if (StringUtils.hasText(status)) {
             wrapper.eq(Goal::getStatus, status);
+        }
+        if (StringUtils.hasText(keyword)) {
+            wrapper.and(w -> w
+                    .like(Goal::getTitle, keyword)
+                    .or()
+                    .exists("SELECT 1 FROM goal_tag WHERE goal_tag.goal_id = goal.id AND goal_tag.tag_name LIKE {0}",
+                            "%" + keyword + "%"));
         }
         List<Goal> goals = goalMapper.selectList(wrapper);
         for (Goal goal : goals) {

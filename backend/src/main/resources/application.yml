@@ -9,6 +9,10 @@ server:
 spring:
   application:
     name: shiguang-backend
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: ${OCEANBASE_URL:jdbc:mysql://127.0.0.1:2881/shiguang_plan?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai}
@@ -26,6 +30,19 @@ spring:
     multipart:
       max-file-size: 20MB
       max-request-size: 20MB
+  cache:
+    type: ${CACHE_TYPE:simple}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 3000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 2
 
 mybatis-plus:
   mapper-locations: classpath:/mapper/*.xml
@@ -43,8 +60,8 @@ logging:
 ai:
   llm:
     base-url: ${AI_LLM_API_BASE_URL:https://api.deepseek.com}
-    api-key: ${AI_LLM_API_KEY:sk-faa34c9448ff411a885c1e6cb5f0e3b2}
-    model: ${AI_LLM_MODEL:deepseek-v4-flash}
+    api-key: ${AI_LLM_API_KEY:}
+    model: ${AI_LLM_MODEL:deepseek-v4-pro}
 
 app:
   upload:
