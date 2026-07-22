@@ -19,18 +19,36 @@ jobs:
         ports:
           - 3306:3306
         options: >-
-          --health-cmd="mysqladmin ping -h localhost"
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -proot"
           --health-interval=10s
           --health-timeout=5s
-          --health-retries=5
+          --health-retries=10
+          --health-start-period=30s
+
     steps:
       - uses: actions/checkout@v4
+
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
           cache: maven
+
+      - name: Grant mvnw execute permission
+        run: chmod +x backend/mvnw
+
+      - name: Wait for MySQL to be ready
+        run: |
+          for i in {1..30}; do
+            if mysqladmin ping -h 127.0.0.1 -u root -proot --silent; then
+              echo "MySQL is ready"
+              break
+            fi
+            echo "Waiting for MySQL... ($i/30)"
+            sleep 2
+          done
+
       - name: Test with Maven
         run: cd backend && ./mvnw test -B
         env:
@@ -39,8 +57,6 @@ jobs:
           OCEANBASE_PASSWORD: root
           OCEANBASE_BOOTSTRAP_URL: jdbc:mysql://127.0.0.1:3306/?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai
           OCEANBASE_DATABASE: shiguang_plan
-          REDIS_HOST: localhost
-          REDIS_PORT: 6379
           CACHE_TYPE: simple
           DB_VERIFY_ON_STARTUP: true
           DB_AUTO_INIT_ON_STARTUP: true
@@ -50,13 +66,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
+
       - name: Install dependencies
         run: cd frontend && npm ci
+
       - name: Build
         run: cd frontend && npm run build
