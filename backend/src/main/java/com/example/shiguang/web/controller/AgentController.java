@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.context.request.RequestAttributes;
+import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.ArrayList;
@@ -105,8 +107,10 @@ public class AgentController {
         }
 
         final List<Map<String, String>> finalMessages = messages;
+        final RequestAttributes requestAttributes = RequestContextHolder.getRequestAttributes();
         new Thread(() -> {
             try {
+                RequestContextHolder.setRequestAttributes(requestAttributes);
                 agentService.chatStream(userId, sessionId, finalMessages, token -> {
                     try {
                         emitter.send(SseEmitter.event().data(token));
