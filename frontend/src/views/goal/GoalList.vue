@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessageBox, ElMessage } from 'element-plus'
 
@@ -97,6 +97,13 @@ const drawerAddTag = () => {
 const drawerRemoveTag = (tag) => {
   drawerTags.value = drawerTags.value.filter(t => t !== tag)
 }
+
+watch([() => drawerGoal.startDate, () => drawerGoal.endDate], ([start, end]) => {
+  if (start && end) {
+    const diff = Math.ceil((new Date(end) - new Date(start)) / (1000 * 60 * 60 * 24)) + 1
+    drawerGoal.targetDays = diff > 0 ? diff : 0
+  }
+})
 
 const drawerSave = async () => {
   if (!drawerGoal.title || !drawerGoal.startDate) {
@@ -222,6 +229,9 @@ onMounted(loadGoals)
         </el-form-item>
         <el-form-item label="结束日期">
           <el-date-picker v-model="drawerGoal.endDate" type="date" value-format="YYYY-MM-DD" placeholder="结束日期" />
+        </el-form-item>
+        <el-form-item label="计划天数">
+          <el-input-number v-model="drawerGoal.targetDays" :min="0" disabled />
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="drawerGoal.status" style="width:100%">
