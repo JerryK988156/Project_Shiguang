@@ -2,7 +2,7 @@
 
 > 学习打卡与目标管理系统 — 帮助学生设定学习目标、每日打卡、追踪学习进度。
 
-[![版本](https://img.shields.io/badge/版本-v4.0-6366f1)](https://github.com/JerryK988156/Project_Shiguang)
+[![版本](https://img.shields.io/badge/版本-v4.1-6366f1)](https://github.com/JerryK988156/Project_Shiguang)
 [![测试](https://img.shields.io/badge/测试-12_PASS-brightgreen)](#测试)
 [![构建](https://img.shields.io/badge/构建-passing-brightgreen)](#构建)
 
@@ -128,7 +128,7 @@ npm run dev
 
 ```bash
 cp .env.example .env     # 编辑填入 API Key
-docker-compose up -d
+docker compose -p shiguang up -d
 ```
 
 ## 测试账号
@@ -152,14 +152,16 @@ docker-compose up -d
 - 三级权限（超级管理员 > 管理员 > 普通用户）
 
 ### 目标管理
-- 新增 / 编辑 / 删除 / 详情 / 列表
+- 新增 / 编辑 / 删除 / 详情 / 列表（含抽屉快速编辑）
 - 状态切换（进行中 → 已完成 / 已放弃）
+- 起止日期联动计算计划天数
 - 标签分类（多标签支持，按标签筛选和统计）
 - 目标模板库（10 个预设模板一键填充）
 - 关键词搜索（标题 + 标签模糊匹配）
 
 ### 打卡系统
-- 每日打卡（同任务每天限打卡一次）
+- 每日打卡（锁定系统当天日期，不可修改）
+- 日期范围校验（仅限目标起止时间内可打卡）
 - 打卡记录查看与删除
 - CSV 数据导出
 - 数据库 + 业务层双重唯一约束
