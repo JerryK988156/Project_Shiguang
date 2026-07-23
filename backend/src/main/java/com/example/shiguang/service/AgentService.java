@@ -449,6 +449,12 @@ public class AgentService {
             if (!finalReply.isBlank()) {
                 String cleaned = stripEmoji(cleanMarkers(finalReply));
                 saveMessage(userId, sessionId, "assistant", cleaned);
+            } else {
+                // 流式无文本返回（LLM 触发了 function calling），回退到非流式 chat()
+                String fallbackReply = chat(userId, sessionId, history);
+                for (int i = 0; i < fallbackReply.length(); i++) {
+                    onToken.accept(String.valueOf(fallbackReply.charAt(i)));
+                }
             }
         } catch (Exception e) {
             log.error("Agent stream error", e);
