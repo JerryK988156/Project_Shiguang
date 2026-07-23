@@ -15,3 +15,4 @@ logs/
 uploads/
 *.pptx
 build_slides.js
+答辩稿*.txt
