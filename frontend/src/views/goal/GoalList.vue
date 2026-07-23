@@ -123,11 +123,21 @@ const drawerSave = async () => {
       tags: drawerTags.value
     }
     await updateGoalApi(payload)
-    // 立即更新本地列表项，避免列表刷新延迟
-    const idx = goalList.value.findIndex(g => g.id === drawerGoal.id)
+    // 1) 先更新本地列表
+    const idx = goalList.value.findIndex(g => Number(g.id) === Number(drawerGoal.id))
     if (idx >= 0) {
-      goalList.value[idx] = { ...goalList.value[idx], ...payload }
+      const updated = { ...goalList.value[idx] }
+      updated.title = payload.title
+      updated.description = payload.description
+      updated.startDate = payload.startDate
+      updated.endDate = payload.endDate
+      updated.targetDays = payload.targetDays
+      updated.status = payload.status
+      updated.tags = payload.tags
+      goalList.value.splice(idx, 1, updated)
     }
+    // 2) 再从后端拉取最新数据确保一致性
+    await loadGoals()
     ElMessage.success('保存成功')
     drawerVisible.value = false
   } finally {
