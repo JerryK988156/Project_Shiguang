@@ -19,9 +19,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -388,72 +385,15 @@ public class AgentService {
     }
 
     /**
-     * 真正的流式对话 — 调用 LLM API 时设置 stream: true，逐 token 回调
+     * 流式对话 — 使用已验证的非流式 chat() 处理完整对话（含 function calling），逐字发送模拟流式
      */
     public void chatStream(Long userId, String sessionId, List<Map<String, String>> history, java.util.function.Consumer<String> onToken) {
         try {
-            // 保存用户消息
-            if (history != null && !history.isEmpty()) {
-                Map<String, String> lastUserMsg = null;
-                for (int i = history.size() - 1; i >= 0; i--) {
-                    if ("user".equals(history.get(i).get("role"))) {
-                        lastUserMsg = history.get(i);
-                        break;
-                    }
-                }
-                if (lastUserMsg != null) {
-                    saveMessage(userId, sessionId, "user", lastUserMsg.get("content"));
-                }
-            }
-
-            ArrayNode messages = objectMapper.createArrayNode();
-            messages.addObject().put("role", "system").put("content", SYSTEM_PROMPT);
-            for (Map<String, String> msg : history) {
-                messages.addObject().put("role", msg.get("role")).put("content", msg.get("content"));
-            }
-
-            ObjectNode body = objectMapper.createObjectNode();
-            body.put("model", model);
-            body.set("messages", messages);
-            body.set("tools", objectMapper.readTree(TOOLS_JSON));
-            body.put("stream", true);
-
-            StringBuilder fullReply = new StringBuilder();
-            
-            llmRestClient.post()
-                    .uri("/v1/chat/completions")
-                    .body(body.toString())
-                    .exchange((request, response) -> {
-                        try (var reader = new BufferedReader(
-                                new InputStreamReader(response.getBody(), StandardCharsets.UTF_8))) {
-                            String line;
-                            while ((line = reader.readLine()) != null) {
-                                if (line.startsWith("data: ")) {
-                                    String data = line.substring(6).trim();
-                                    if ("[DONE]".equals(data)) break;
-                                    try {
-                                        JsonNode chunk = objectMapper.readTree(data);
-                                        String delta = chunk.path("choices").path(0).path("delta").path("content").asText("");
-                                        if (!delta.isEmpty()) {
-                                            fullReply.append(delta);
-                                            onToken.accept(delta);
-                                        }
-                                    } catch (Exception ignored) {}
-                                }
-                            }
-                        }
-                        return null;
-                    });
-
-            String finalReply = fullReply.toString();
-            if (!finalReply.isBlank()) {
-                String cleaned = stripEmoji(cleanMarkers(finalReply));
-                saveMessage(userId, sessionId, "assistant", cleaned);
-            } else {
-                // 流式无文本返回（LLM 触发了 function calling），回退到非流式 chat()
-                String fallbackReply = chat(userId, sessionId, history);
-                for (int i = 0; i < fallbackReply.length(); i++) {
-                    onToken.accept(String.valueOf(fallbackReply.charAt(i)));
+            String result = chat(userId, sessionId, history);
+            for (int i = 0; i < result.length(); i++) {
+                onToken.accept(String.valueOf(result.charAt(i)));
+                if (i % 5 == 0) {
+                    try { Thread.sleep(10); } catch (InterruptedException ignored) {}
                 }
             }
         } catch (Exception e) {
