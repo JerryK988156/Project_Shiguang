@@ -44,9 +44,11 @@ public class AchievementService {
             return null;
         }
 
-        long checkedDays = checkinRecordMapper.selectCount(new LambdaQueryWrapper<CheckinRecord>()
+        List<CheckinRecord> allCheckins = checkinRecordMapper.selectList(new LambdaQueryWrapper<CheckinRecord>()
                 .eq(CheckinRecord::getGoalId, goalId)
-                .eq(CheckinRecord::getUserId, SessionUtils.requireUserId()));
+                .eq(CheckinRecord::getUserId, SessionUtils.requireUserId())
+                .orderByAsc(CheckinRecord::getCheckinDate));
+        int checkedDays = allCheckins.size();
 
         Map<String, Object> latest = null;
         for (Map.Entry<Integer, String> entry : MILESTONES.entrySet()) {
@@ -57,13 +59,15 @@ public class AchievementService {
                         .eq(Achievement::getGoalId, goalId)
                         .eq(Achievement::getMilestoneDays, milestoneDays));
                 if (existing == 0) {
+                    // 第 N 次打卡的日期即为达成该里程碑的日期
+                    LocalDate achievedDate = allCheckins.get(milestoneDays - 1).getCheckinDate();
                     Achievement achievement = new Achievement();
                     achievement.setUserId(SessionUtils.requireUserId());
                     achievement.setGoalId(goalId);
                     achievement.setGoalTitle(goal.getTitle());
                     achievement.setMilestoneDays(milestoneDays);
                     achievement.setBadgeName(entry.getValue());
-                    achievement.setAchievedDate(LocalDate.now());
+                    achievement.setAchievedDate(achievedDate);
                     achievementMapper.insert(achievement);
 
                     Map<String, Object> result = new LinkedHashMap<>();
