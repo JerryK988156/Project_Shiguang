@@ -48,6 +48,7 @@ public class AchievementService {
                 .eq(CheckinRecord::getGoalId, goalId)
                 .eq(CheckinRecord::getUserId, SessionUtils.requireUserId()));
 
+        Map<String, Object> latest = null;
         for (Map.Entry<Integer, String> entry : MILESTONES.entrySet()) {
             int milestoneDays = entry.getKey();
             if (checkedDays >= milestoneDays) {
@@ -70,11 +71,11 @@ public class AchievementService {
                     result.put("milestoneDays", milestoneDays);
                     result.put("badgeName", entry.getValue());
                     result.put("goalTitle", goal.getTitle());
-                    return result;
+                    latest = result; // 保留最后一个，同时记录之前所有
                 }
             }
         }
-        return null;
+        return latest;
     }
 
     public List<Achievement> listByUser() {
