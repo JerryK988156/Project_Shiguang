@@ -5,12 +5,15 @@ echo ========================================
 echo    Shiguang Plan - One-Click Start
 echo ========================================
 echo.
+
+set ROOT=%~dp0
+
 echo Starting backend (Spring Boot :8080) ...
-start "Backend" cmd /c "cd /d %~dp0backend && mvnw spring-boot:run"
+start "Backend" cmd /k "cd /d "%ROOT%backend" && .\mvnw spring-boot:run"
 echo.
 
 echo Starting frontend (Vite :5173) ...
-start "Frontend" cmd /c "cd /d %~dp0frontend && npm run dev"
+start "Frontend" cmd /k "cd /d "%ROOT%frontend" && npm run dev"
 echo.
 
 echo ========================================
