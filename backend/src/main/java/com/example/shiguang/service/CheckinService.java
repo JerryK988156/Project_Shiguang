@@ -37,7 +37,17 @@ public class CheckinService {
             throw new BusinessException("目标不能为空");
         }
         Goal goal = goalService.requireOwnedGoal(dto.getGoalId());
-        LocalDate checkinDate = dto.getCheckinDate() == null ? LocalDate.now() : dto.getCheckinDate();
+        LocalDate today = LocalDate.now();
+        LocalDate checkinDate = today;
+
+        // 校验打卡日期是否在目标起止时间范围内
+        if (goal.getStartDate() != null && today.isBefore(goal.getStartDate())) {
+            throw new BusinessException("目标尚未开始（开始日期：" + goal.getStartDate() + "）");
+        }
+        if (goal.getEndDate() != null && today.isAfter(goal.getEndDate())) {
+            throw new BusinessException("目标已结束（结束日期：" + goal.getEndDate() + "）");
+        }
+
         long exists = checkinRecordMapper.selectCount(new LambdaQueryWrapper<CheckinRecord>()
                 .eq(CheckinRecord::getUserId, SessionUtils.requireUserId())
                 .eq(CheckinRecord::getGoalId, goal.getId())

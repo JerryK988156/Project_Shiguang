@@ -26,7 +26,15 @@ const form = reactive({
 
 const loadGoals = async () => {
   const data = await getGoalListApi()
-  goalList.value = Array.isArray(data) ? data.filter((item) => item.status !== '已放弃') : []
+  const allGoals = Array.isArray(data) ? data.filter((item) => item.status !== '已放弃') : []
+  // 只保留今天在起止时间范围内的目标
+  const today = new Date().toISOString().slice(0, 10)
+  goalList.value = allGoals.filter(g => {
+    if (!g.startDate) return false
+    if (g.startDate > today) return false          // 开始日期还没到
+    if (g.endDate && g.endDate < today) return false // 结束日期已过
+    return true
+  })
 }
 
 const loadTodayStatus = async () => {
@@ -75,9 +83,10 @@ watch(() => form.goalId, loadTodayStatus)
 
 onMounted(async () => {
   await loadGoals()
+  if (goalList.value.length === 0) return
   if (route.query.goalId && goalList.value.some(g => String(g.id) === String(route.query.goalId))) {
     form.goalId = route.query.goalId
-  } else if (goalList.value.length > 0) {
+  } else {
     form.goalId = goalList.value[0].id
   }
 })
@@ -97,7 +106,10 @@ onMounted(async () => {
 
       <el-form label-width="100px">
         <el-form-item label="目标">
-          <el-select v-model="form.goalId" placeholder="请选择目标" style="width: 320px">
+          <template v-if="goalList.length === 0">
+            <el-tag type="warning">今天没有可打卡的目标（所有目标均不在起止时间范围内）</el-tag>
+          </template>
+          <el-select v-else v-model="form.goalId" placeholder="请选择目标" style="width: 320px">
             <el-option v-for="item in goalList" :key="item.id" :label="item.title" :value="item.id" />
           </el-select>
         </el-form-item>
