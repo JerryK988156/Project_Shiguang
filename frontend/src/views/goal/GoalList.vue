@@ -112,10 +112,24 @@ const drawerSave = async () => {
   }
   drawerLoading.value = true
   try {
-    await updateGoalApi({ ...drawerGoal, tags: drawerTags.value })
+    const payload = {
+      id: drawerGoal.id,
+      title: drawerGoal.title,
+      description: drawerGoal.description,
+      startDate: drawerGoal.startDate,
+      endDate: drawerGoal.endDate,
+      targetDays: drawerGoal.targetDays,
+      status: drawerGoal.status,
+      tags: drawerTags.value
+    }
+    await updateGoalApi(payload)
+    // 立即更新本地列表项，避免列表刷新延迟
+    const idx = goalList.value.findIndex(g => g.id === drawerGoal.id)
+    if (idx >= 0) {
+      goalList.value[idx] = { ...goalList.value[idx], ...payload }
+    }
     ElMessage.success('保存成功')
     drawerVisible.value = false
-    loadGoals()
   } finally {
     drawerLoading.value = false
   }
